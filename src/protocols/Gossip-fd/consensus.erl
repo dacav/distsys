@@ -106,7 +106,6 @@ handle_message (From, {phase2, E},
             },
             agreement(NewCons0);
         _ ->
-            log_serv:log("Got a 'phase=2' message, discarded"),
             {ok, Cons}
     end;
 
@@ -152,13 +151,14 @@ run_phase2 (Cons = #cons{ est_from_c=E }) ->
     {ok, NewCons}.
 
 agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
+    Target = trunc(N/2),
     case gb_sets:size(Prop) of
-        M when M < trunc(N/2) ->
-            log_serv:log("I heard ~p nodes, waiting for other ~p (N=~p)",
-                         [M, trunc(N/2), N]),
+        M when M < Target ->
+            log_serv:log("Heard: ~p, Target: ~p", [M, Target]),
             {ok, Cons};
-        _ ->
-            log_serv:log("Rec=~p", [Rec]),
+        M ->
+            log_serv:log("Heard enough peers: ~p/~p (N=~p)",
+                         [M, Target, N]),
             case Rec of
                 ['?'] ->
                     log_serv:log("Next round"),
@@ -203,8 +203,7 @@ run_round (Cons = #cons{ est=Est }) ->
                 log_serv:log("Coordinator started with est=~p",
                              [Est_c]),
                 gfd_api:cons_bcast({est_c, Est_c});
-            {I, P} ->
-                log_serv:log("Coordinator is ~p (~p)", [P, I]),
+            _ ->
                 Est
         end,
     NewCons = Cons#cons {

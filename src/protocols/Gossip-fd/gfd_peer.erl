@@ -35,6 +35,7 @@ handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
             {ok, NewStatus};
         Error -> Error
     end;
+
 handle_message (From, {cons, Msg}, Status = #status{ cons=Cons }) ->
     try
         NewCons =
