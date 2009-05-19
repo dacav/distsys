@@ -52,7 +52,7 @@ ap_spawn (Atom, Fun, Tree) ->
 ap_exit (Atom, Tree, How) ->
     case whereis(Atom) of
         undefined ->
-            {error, Tree};
+            {{error, no_process}, Tree};
         Pid ->
             proc_exit(Pid, How),
             {ok, gb_trees:delete(Pid, Tree)}
@@ -65,45 +65,58 @@ ap_pid2atom (Pid, Active) ->
     element(1, gb_trees:get(Pid, Active)).
 
 % ------------------------------------------------------------------------
+% Safe logging (when log is down, just don't log)
+% ------------------------------------------------------------------------
+
+safe_log (Format, Args) ->
+    try
+        log ! {Format, Args}, ok
+    catch
+        error:badarg -> ok
+    end.
+
+% ------------------------------------------------------------------------
 % Main loop
 % ------------------------------------------------------------------------
 
-loop (Active, undefined) ->
+loop (Active, nil) ->
     GetAtom = fun (P) -> ap_pid2atom(P, Active) end,
+    io:format("Active guys: ~p~n", [ gb_trees:to_list(Active) ]),
     receive
         {'EXIT', Pid, normal} ->
-            log ! {"Process ~p exited normally", [GetAtom(Pid)]},
-            loop( ap_terminated(Pid, Active), undefined);
+            safe_log("Process ~p exited normally", [GetAtom(Pid)]),
+            loop( ap_terminated(Pid, Active), nil);
         {'EXIT', Pid, Reason} ->
-            log ! {"Respawning ~p (died by '~p')", [GetAtom(Pid), Reason]},
-            loop( ap_crashed(Pid, Active), undefined );
+            safe_log("Respawning ~p (died by '~p')",
+                     [GetAtom(Pid), Reason]),
+            loop( ap_crashed(Pid, Active), nil );
         {From, {run, Atom, Fun}} when is_pid(From) ->
             try ap_spawn(Atom, Fun, Active) of
                 X ->
-                    log ! {"New process: ~p", [Atom]},
+                    safe_log("New process: ~p", [Atom]),
                     loop(X, {From, ok})
             catch
                 throw:{exists, Atom, _} ->
-                    log ! {"Attempt to build ~p twice", [Atom]},
+                    safe_log("Attempt to build ~p twice", [Atom]),
                     loop(Active, {From, error})
             end;
         {From, {kill, Atom}} when is_pid(From) ->
-            log ! {"Killing ~p", [Atom]},
+            safe_log("Killing ~p", [Atom]),
             {Outcome, Tree} = ap_exit(Atom, Active, kill),
             loop( Tree, {From, Outcome} );
         {From, {term, Atom, How}} when is_pid(From) ->
-            log ! {"Shutting down ~p", [Atom]},
+            safe_log("Shutting down ~p with signal ~p", [Atom, How]),
             {Outcome, Tree} = ap_exit(Atom, Active, How),
             loop( Tree, {From, Outcome} );
         {From, report} when is_pid(From) ->
             loop( Active, {From, ap_report(Active)} );
         X ->
-            log ! {"No match for ~p", [X]},
-            loop( Active, undefined )
+            safe_log("No match for ~p", [X]),
+            loop( Active, nil )
     end;
 loop (Active, {To, Msg}) ->
     To ! Msg,
-    loop(Active, undefined).
+    loop(Active, nil).
 
 % ------------------------------------------------------------------------
 % Communication with the respawn process
@@ -126,10 +139,13 @@ run (Atom, Fun) when is_function(Fun) ->
     ask_action({run, Atom, Fun}).
 
 kill (Atom) when is_atom(Atom) ->
-    ask_action({kill, Atom}).
+    term(Atom, kill).
 
 term (Atom, How) when is_atom(Atom) ->
-    ask_action({term, Atom, How}).
+    case How of
+        normal -> ok;
+        _ -> ask_action({term, Atom, How})
+    end.
 
 report () ->
     ask_action(report).
@@ -146,7 +162,7 @@ main (Log) ->
         catch
             throw:{exists, log, _} -> ap_empty()
         end,
-    loop(Active, undefined).
+    loop(Active, nil).
 
 start (Log) ->
     try
