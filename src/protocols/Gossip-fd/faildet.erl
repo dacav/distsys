@@ -175,5 +175,5 @@ insert_neighbor (Pid, FD = #fd{}) ->
     },
     Known = FD#fd.known,
     FD#fd{
-        known = gb_trees:insert(Pid, Record, Known)
+        known = gb_trees:enter(Pid, Record, Known)
     }.

@@ -21,10 +21,7 @@ init ({TFail, TCleanup, TGossip}) ->
 
 handle_message (_From, {gossip_faildet, KnownList}, Status) ->
     {Born, NewFD} = faildet:merge(KnownList, Status#status.fd),
-    case Born of
-        [] -> ok;
-        _ -> log_serv:log("New neighbors: ~p", [Born])
-    end,
+    lists:foreach(fun peer_chan:greet/1, Born),
     NewStatus = Status#status {
         fd = NewFD
     },
