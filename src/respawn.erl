@@ -34,7 +34,7 @@ proc_exit (Pid, How) ->
 
 ap_empty () -> gb_trees:empty().
 
-ap_exited (Pid, Tree) ->
+ap_terminated (Pid, Tree) ->
     case is_process_alive(Pid) of
         true -> throw(tampered);    % process was not dead? wtf?
         false -> gb_trees:delete(Pid, Tree)
@@ -43,16 +43,20 @@ ap_exited (Pid, Tree) ->
 ap_crashed (Pid, Active) ->
     {Atom, Fun} = gb_trees:get(Pid, Active),
     gb_trees:insert(proc_start(Atom, Fun), {Atom, Fun},
-                    ap_exited(Pid, Active)).
+                    ap_terminated(Pid, Active)).
 
 ap_spawn (Atom, Fun, Tree) ->
     Pid = proc_start(Atom, Fun),
     gb_trees:insert(Pid, {Atom, Fun}, Tree).
 
 ap_exit (Atom, Tree, How) ->
-    Pid = whereis(Atom),
-    proc_exit(Pid, How),
-    gb_trees:delete(Pid, Tree).
+    case whereis(Atom) of
+        undefined ->
+            {error, Tree};
+        Pid ->
+            proc_exit(Pid, How),
+            {ok, gb_trees:delete(Pid, Tree)}
+    end.
 
 ap_report (Active) ->
     lists:map(fun ({P,{A,_}}) -> {A,P} end, gb_trees:to_list(Active)).
@@ -69,7 +73,7 @@ loop (Active, undefined) ->
     receive
         {'EXIT', Pid, normal} ->
             log ! {"Process ~p exited normally", [GetAtom(Pid)]},
-            loop( ap_exited(Pid, Active), undefined);
+            loop( ap_terminated(Pid, Active), undefined);
         {'EXIT', Pid, Reason} ->
             log ! {"Respawning ~p (died by '~p')", [GetAtom(Pid), Reason]},
             loop( ap_crashed(Pid, Active), undefined );
@@ -85,10 +89,12 @@ loop (Active, undefined) ->
             end;
         {From, {kill, Atom}} when is_pid(From) ->
             log ! {"Killing ~p", [Atom]},
-            loop( ap_exit(Atom, Active, kill), {From, ok} );
+            {Outcome, Tree} = ap_exit(Atom, Active, kill),
+            loop( Tree, {From, Outcome} );
         {From, {term, Atom, How}} when is_pid(From) ->
             log ! {"Shutting down ~p", [Atom]},
-            loop( ap_exit(Atom, Active, How), {From, ok} );
+            {Outcome, Tree} = ap_exit(Atom, Active, How),
+            loop( Tree, {From, Outcome} );
         {From, report} when is_pid(From) ->
             loop( Active, {From, ap_report(Active)} );
         X ->
