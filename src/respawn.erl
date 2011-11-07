@@ -1,4 +1,5 @@
 -module(respawn).
+-author("Giovanni Simoni").
 -export([start/0, start/1, run/2, kill/1, term/2, report/0]).
 -define(TIMEOUT, 1000).
 
@@ -98,7 +99,7 @@ loop (Active, nil) ->
             catch
                 throw:{exists, Atom, _} ->
                     safe_log("Attempt to build ~p twice", [Atom]),
-                    loop(Active, {From, error})
+                    loop(Active, {From, {error, exists}})
             end;
         {From, {kill, Atom}} when is_pid(From) ->
             safe_log("Killing ~p", [Atom]),
@@ -168,7 +169,8 @@ start (Log) ->
     try
         proc_start(respawn, fun () -> main(Log) end), ok
     catch
-        throw:{exists, respawn, _} -> error
+        throw:{exists, respawn, _} -> {error, exists};
+        error:E -> {error, E}
     end.
 
 default_log () ->
