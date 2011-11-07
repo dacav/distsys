@@ -10,7 +10,7 @@
 % defined by boundary on the time and a function yielding a value between
 % 0 and 1.
 %
-% Note: random:uniform/0 is a good example of such a function.
+% Note: random:uniform/0 is a good example of Dist function.
 % ------------------------------------------------------------------------
 
 random_time (Min, Max, Dist) ->
