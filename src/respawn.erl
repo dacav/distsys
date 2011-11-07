@@ -82,7 +82,6 @@ safe_log (Format, Args) ->
 
 loop (Active, nil) ->
     GetAtom = fun (P) -> ap_pid2atom(P, Active) end,
-    io:format("Active guys: ~p~n", [ gb_trees:to_list(Active) ]),
     receive
         {'EXIT', Pid, normal} ->
             safe_log("Process ~p exited normally", [GetAtom(Pid)]),
