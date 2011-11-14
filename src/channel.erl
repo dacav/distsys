@@ -55,10 +55,10 @@ start_link (MinDelay, MaxDelay, Dist) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
 
 start (MinDelay, MaxDelay) ->
-    start (MinDelay, MaxDelay, fun random:uniform/0).
+    start(MinDelay, MaxDelay, fun random:uniform/0).
 
 start_link (MinDelay, MaxDelay) ->
-    start_link (MinDelay, MaxDelay, fun random:uniform/0).
+    start_link(MinDelay, MaxDelay, fun random:uniform/0).
 
 send (To, Msg) ->
     gen_server:call(?MODULE, {send, To, Msg}). 
