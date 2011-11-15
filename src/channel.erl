@@ -31,7 +31,7 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
-init (Args=[MinDelay, MaxDelay, Dist]) ->
+init ([MinDelay, MaxDelay, Dist]) ->
     InitState = #params{min_del=MinDelay,
                         max_del=MaxDelay,
                         dist=Dist},

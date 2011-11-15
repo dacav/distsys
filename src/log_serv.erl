@@ -29,7 +29,7 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
-init (Args=[OutFile]) ->
+init ([OutFile]) ->
     {ok, OutFile}.
 
 print_date (OutFile) ->
