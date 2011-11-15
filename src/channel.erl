@@ -1,12 +1,12 @@
 -module(channel).
 -author("Giovanni Simoni").
--export([start/2, start_link/2, start/3, start_link/3]).
+-export([start/2, start_link/2, start/3, start_link/3, send/2]).
+-record(params, {min_del, max_del, dist}).
 
 -behavior(gen_server).
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
 
--export([send/2]).
 -import(randel, [send_rand/5]).
 
 % -----------------------------------------------------------------------
@@ -31,9 +31,7 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
--record(params, {min_del, max_del, dist}).
-
-init ([MinDelay, MaxDelay, Dist]) ->
+init (Args=[MinDelay, MaxDelay, Dist]) ->
     InitState = #params{min_del=MinDelay,
                         max_del=MaxDelay,
                         dist=Dist},
@@ -45,6 +43,10 @@ handle_call ({send, To, Msg}, {From, _}, State) ->
                State#params.dist,
                To, {From, Msg} ),
     {reply, ok, State}.
+
+% -----------------------------------------------------------------------
+% Interface
+% -----------------------------------------------------------------------
 
 start (MinDelay, MaxDelay, Dist) ->
     ArgList = [MinDelay, MaxDelay, Dist],
@@ -61,5 +63,5 @@ start_link (MinDelay, MaxDelay) ->
     start_link(MinDelay, MaxDelay, fun random:uniform/0).
 
 send (To, Msg) ->
-    gen_server:call(?MODULE, {send, To, Msg}). 
+    gen_server:call(?MODULE, {send, To, Msg}).
 

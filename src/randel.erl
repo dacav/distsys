@@ -33,4 +33,3 @@ kill_rand (Min, Max, Dist, Pid) ->
 
 kill_rand (Min, Max, Dist) ->
     kill_rand(Min, Max, Dist, self()).
-

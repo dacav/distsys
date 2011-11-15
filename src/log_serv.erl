@@ -29,7 +29,7 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
-init ([OutFile]) ->
+init (Args=[OutFile]) ->
     {ok, OutFile}.
 
 print_date (OutFile) ->
@@ -37,9 +37,9 @@ print_date (OutFile) ->
     io:format(OutFile, "~p/~p/~p ~p:~p:~p ", [Y,M,D,H,Mi,S]),
     ok.
 
-handle_call ({Format, Data}, From, OutFile)
+handle_call ({Format, Data}, _, OutFile)
              when is_list(Format) and is_list(Data) ->
-    io:format(OutFile, Format, Data)
+    io:format(OutFile, Format, Data),
     {reply, ok, OutFile};
 
 handle_call (S, _, OutFile) ->
