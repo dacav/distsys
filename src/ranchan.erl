@@ -1,4 +1,4 @@
--module(channel).
+-module(ranchan).
 -author("Giovanni Simoni").
 -export([start/1, start_link/1, send/2]).
 

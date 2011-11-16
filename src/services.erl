@@ -14,8 +14,8 @@
 init (Params) ->
     % Channel service descriptor
     Channel = {channel,
-         {rand_chan, start_link, Params#servconf.chan},
-         permanent, ?KILL_THRESHOLD, worker, [rand_chan]
+         {ranchan, start_link, Params#servconf.chan},
+         permanent, ?KILL_THRESHOLD, worker, [ranchan]
     },
     % Log service descriptor
     Logger = {logger,
@@ -25,7 +25,7 @@ init (Params) ->
     % GO!
     {ok,
     	{{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART},
-         [Channel, Logger]
+         [Logger, Channel]
         }
   	}.
 
