@@ -1,13 +1,12 @@
 -module(channel).
 -author("Giovanni Simoni").
--export([start/2, start_link/2, start/3, start_link/3, send/2]).
--record(params, {min_del, max_del, dist}).
+-export([start/1, start_link/1, send/2]).
 
 -behavior(gen_server).
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
 
--import(randel, [send_rand/5]).
+-import(randel, [send_rand/3]).
 
 % -----------------------------------------------------------------------
 % Unused callbacks
@@ -31,37 +30,24 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
-init ([MinDelay, MaxDelay, Dist]) ->
-    InitState = #params{min_del=MinDelay,
-                        max_del=MaxDelay,
-                        dist=Dist},
-    {ok, InitState}.
+init (RandSpec) ->
+    io:format("channel:init(~p) has been called.~n", [RandSpec]),
+    {ok, RandSpec}.
 
-handle_call ({send, To, Msg}, {From, _}, State) ->
-    send_rand( State#params.min_del,
-               State#params.max_del,
-               State#params.dist,
-               To, {From, Msg} ),
-    {reply, ok, State}.
+handle_call ({send, To, Msg}, {From, _}, RandSpec) ->
+    send_rand(RandSpec, To, {From, Msg}),
+    {reply, ok, RandSpec}.
 
 % -----------------------------------------------------------------------
 % Interface
 % -----------------------------------------------------------------------
 
-start (MinDelay, MaxDelay, Dist) ->
-    ArgList = [MinDelay, MaxDelay, Dist],
-    gen_server:start({local, ?MODULE}, ?MODULE, ArgList, []).
+start (RandSpec) ->
+    gen_server:start({local, ?MODULE}, ?MODULE, RandSpec, []).
 
-start_link (MinDelay, MaxDelay, Dist) ->
-    ArgList = [MinDelay, MaxDelay, Dist],
-    gen_server:start_link({local, ?MODULE}, ?MODULE, ArgList, []).
-
-start (MinDelay, MaxDelay) ->
-    start(MinDelay, MaxDelay, fun random:uniform/0).
-
-start_link (MinDelay, MaxDelay) ->
-    start_link(MinDelay, MaxDelay, fun random:uniform/0).
+start_link (RandSpec) ->
+    io:format("RandSpec=~p", [RandSpec]),
+    gen_server:start_link({local, ?MODULE}, ?MODULE, RandSpec, []).
 
 send (To, Msg) ->
     gen_server:call(?MODULE, {send, To, Msg}).
-

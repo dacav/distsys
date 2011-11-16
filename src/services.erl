@@ -20,17 +20,16 @@ init (Params) ->
          permanent, ?KILL_THRESHOLD, worker, [channel]
     },
     % Log service descriptor
-    Log = {logger,
-             {log_serv, start_link, Params#servconf.logger},
-             permanent, ?KILL_THRESHOLD, worker, [log_serv]
+    Logger = {logger,
+                {log_serv, start_link, Params#servconf.logger},
+                permanent, ?KILL_THRESHOLD, worker, [log_serv]
     },
     % GO!
     {ok,
     	{{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART},
-         [Channel, Log]
+         [Channel, Logger]
         }
   	}.
 
 start_link (Params) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, Params).
-

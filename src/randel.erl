@@ -1,8 +1,3 @@
--module(randel).
--author("Giovanni Simoni").
--export([send_rand/5, send_rand/4, exit_rand/5, exit_rand/4, kill_rand/4,
-         kill_rand/3]).
-
 % ------------------------------------------------------------------------
 % Random delay for actions.
 %
@@ -13,23 +8,46 @@
 % Note: random:uniform/0 is a good example of Dist function.
 % ------------------------------------------------------------------------
 
-random_time (Min, Max, Dist) ->
+-module(randel).
+-author("Giovanni Simoni").
+-export([send_rand/3, send_rand/2, exit_rand/3, exit_rand/2, kill_rand/2,
+         kill_rand/1]).
+
+-define(DEFAULT_MIN, 0).
+-define(DEFAULT_MAX, 1000).
+-define(DEFAULT_DIST, fun random:uniform/0).
+
+% ------------------------------------------------------------------------
+% Random period specification:
+% ------------------------------------------------------------------------
+-record(randspec, {min=?DEFAULT_MIN,
+                   max=?DEFAULT_MAX,
+                   dist=?DEFAULT_DIST}).
+
+random_time (Spec) ->
+    Min = Spec#randspec.min,
+    Max = Spec#randspec.max,
+    Dist = Spec#randspec.dist,
     trunc(Min + (Max - Min) * Dist()).
 
-send_rand (Min, Max, Dist, To, Msg) ->
-    timer:send_after(random_time(Min, Max, Dist), To, Msg).
+% ------------------------------------------------------------------------
+% Interface:
+% ------------------------------------------------------------------------
 
-send_rand (Min, Max, Dist, Msg) ->
-    send_rand (Min, Max, Dist, self(), Msg).
+send_rand (Spec, To, Msg) ->
+    timer:send_after(random_time(Spec), To, Msg).
 
-exit_rand (Min, Max, Dist, Pid, Reason) ->
-    timer:exit_after(random_time(Min, Max, Dist), Pid, Reason).
+send_rand (Spec, Msg) ->
+    send_rand (Spec, self(), Msg).
 
-exit_rand (Min, Max, Dist, Reason) ->
-    exit_rand(Min, Max, Dist, self(), Reason).
+exit_rand (Spec, Pid, Reason) ->
+    timer:exit_after(random_time(Spec), Pid, Reason).
 
-kill_rand (Min, Max, Dist, Pid) ->
-    timer:kill_after(random_time(Min, Max, Dist), Pid).
+exit_rand (Spec, Reason) ->
+    exit_rand(Spec, self(), Reason).
 
-kill_rand (Min, Max, Dist) ->
-    kill_rand(Min, Max, Dist, self()).
+kill_rand (Spec, Pid) ->
+    timer:kill_after(random_time(Spec), Pid).
+
+kill_rand (Spec) ->
+    kill_rand(Spec, self()).
