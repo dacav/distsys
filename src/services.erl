@@ -4,8 +4,6 @@
 -behavior(supervisor).
 -export([init/1, start_link/1]).
 
--import(channel).
-
 -define(TIMEOUT, 3000).
 -define(MAX_RESTART, 3).
 -define(MAX_TIME_RESTART, 1000).
@@ -16,8 +14,8 @@
 init (Params) ->
     % Channel service descriptor
     Channel = {channel,
-         {channel, start_link, Params#servconf.chan},
-         permanent, ?KILL_THRESHOLD, worker, [channel]
+         {rand_chan, start_link, Params#servconf.chan},
+         permanent, ?KILL_THRESHOLD, worker, [rand_chan]
     },
     % Log service descriptor
     Logger = {logger,
