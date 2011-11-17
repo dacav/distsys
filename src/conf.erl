@@ -13,8 +13,8 @@ behaviour_info(_) -> undefined.
 
 get_default (Module) ->
     try apply(Module, default_conf, []) of
-        L when is_list(L) -> L;
-        _ -> erlang:error(badarg, {Module, 'default not a list'})
+        nil -> [];
+        Conf -> [Conf]
     catch
         error:undef -> []
     end.

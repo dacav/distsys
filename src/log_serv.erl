@@ -13,9 +13,8 @@
 % Default Configuration: write on standard error
 % -----------------------------------------------------------------------
 
-default_conf () -> [
-        standard_error
-    ].
+default_conf () ->
+    standard_error.
 
 % -----------------------------------------------------------------------
 % Unused callbacks

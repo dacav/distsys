@@ -60,8 +60,7 @@ send (To, Msg) ->
 % Default Configuration
 % -----------------------------------------------------------------------
 
-default_conf () -> [
-        randel:build_spec(?DEFAULT_MIN_DELAY, ?DEFAULT_MAX_DELAY,
-                          ?DEFAULT_DELAY_DIST)
-    ].
+default_conf () ->
+    randel:build_spec(?DEFAULT_MIN_DELAY, ?DEFAULT_MAX_DELAY,
+                      ?DEFAULT_DELAY_DIST).
 
