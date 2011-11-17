@@ -11,9 +11,20 @@
 -module(randel).
 -author("Giovanni Simoni").
 -export([send_rand/3, send_rand/2, exit_rand/3, exit_rand/2, kill_rand/2,
-         kill_rand/1]).
+         kill_rand/1, build_spec/3]).
 
--include("randel.hrl").
+% ------------------------------------------------------------------------
+% Random time specification and its builder
+% ------------------------------------------------------------------------
+
+-record(randspec, {min, max, dist}).
+
+build_spec (Min, Max, Dist) ->
+    #randspec {
+        min = Min,
+        max = Max,
+       dist = Dist
+    }.
 
 random_time (Spec) ->
     Min = Spec#randspec.min,
