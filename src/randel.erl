@@ -11,18 +11,20 @@
 -module(randel).
 -author("Giovanni Simoni").
 -export([send_rand/3, send_rand/2, exit_rand/3, exit_rand/2, kill_rand/2,
-         kill_rand/1]).
-
--define(DEFAULT_MIN, 0).
--define(DEFAULT_MAX, 1000).
--define(DEFAULT_DIST, fun random:uniform/0).
+         kill_rand/1, build_spec/3]).
 
 % ------------------------------------------------------------------------
-% Random period specification:
+% Random time specification and its builder
 % ------------------------------------------------------------------------
--record(randspec, {min=?DEFAULT_MIN,
-                   max=?DEFAULT_MAX,
-                   dist=?DEFAULT_DIST}).
+
+-record(randspec, {min, max, dist}).
+
+build_spec (Min, Max, Dist) ->
+    #randspec {
+        min = Min,
+        max = Max,
+       dist = Dist
+    }.
 
 random_time (Spec) ->
     Min = Spec#randspec.min,

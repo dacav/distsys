@@ -1,12 +1,18 @@
 -module(ranchan).
 -author("Giovanni Simoni").
 -export([start/1, start_link/1, send/2]).
+-import(randel, [send_rand/3]).
 
 -behavior(gen_server).
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
 
--import(randel, [send_rand/3]).
+-behavior(conf).
+-export([default_conf/0]).
+
+-define(DEFAULT_MIN_DELAY, 0).
+-define(DEFAULT_MAX_DELAY, 1000).
+-define(DEFAULT_DELAY_DIST, fun random:uniform/0).
 
 % -----------------------------------------------------------------------
 % Unused callbacks
@@ -31,7 +37,6 @@ terminate (_, _) ->
 % -----------------------------------------------------------------------
 
 init (RandSpec) ->
-    io:format("channel:init(~p) has been called.~n", [RandSpec]),
     {ok, RandSpec}.
 
 handle_call ({send, To, Msg}, {From, _}, RandSpec) ->
@@ -46,8 +51,16 @@ start (RandSpec) ->
     gen_server:start({local, ?MODULE}, ?MODULE, RandSpec, []).
 
 start_link (RandSpec) ->
-    io:format("RandSpec=~p", [RandSpec]),
     gen_server:start_link({local, ?MODULE}, ?MODULE, RandSpec, []).
 
 send (To, Msg) ->
     gen_server:call(?MODULE, {send, To, Msg}).
+
+% -----------------------------------------------------------------------
+% Default Configuration
+% -----------------------------------------------------------------------
+
+default_conf () ->
+    randel:build_spec(?DEFAULT_MIN_DELAY, ?DEFAULT_MAX_DELAY,
+                      ?DEFAULT_DELAY_DIST).
+
