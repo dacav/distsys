@@ -6,6 +6,16 @@
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
 
+-behavior(conf).
+-export([default_conf/0]).
+
+% -----------------------------------------------------------------------
+% Default Configuration: write on standard error
+% -----------------------------------------------------------------------
+
+default_conf () -> [
+        standard_error
+    ].
 
 % -----------------------------------------------------------------------
 % Unused callbacks
@@ -29,7 +39,7 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
-init ([OutFile]) ->
+init (OutFile) ->
     {ok, OutFile}.
 
 print_date (OutFile) ->
@@ -51,16 +61,18 @@ handle_call (S, _, OutFile) ->
     {reply, ok, OutFile}.
 
 start (OutFile) ->
-    gen_server:start({local, ?MODULE}, ?MODULE, [OutFile], []).
+    gen_server:start({local, ?MODULE}, ?MODULE, OutFile, []).
 
 start_link (OutFile) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [OutFile], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, OutFile, []).
 
 start () ->
-    start(standard_error).
+    OutFile = default_conf(),
+    start(OutFile).
 
 start_link () ->
-    start_link(standard_error).
+    OutFile = default_conf(),
+    start_link(OutFile).
 
 log (Fmt, Args) ->
     gen_server:call(?MODULE, {Fmt, Args}).
