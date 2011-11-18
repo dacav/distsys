@@ -48,7 +48,10 @@ print_date (OutFile) ->
 
 handle_call ({Format, Data}, _, OutFile)
              when is_list(Format) and is_list(Data) ->
-    io:format(OutFile, Format, Data),
+    Output = try io_lib:format(Format, Data)
+             catch error:badarg -> io_lib:format("~p~p", [Format, Data])
+             end,
+    io:format(OutFile, Output, []),
     {reply, ok, OutFile};
 
 handle_call (S, _, OutFile) ->
