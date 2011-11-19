@@ -1,10 +1,11 @@
                                Stuff to do
                                ~~~~~~~~~~~
 
-MAX-TO-MIN PRIORITY:
-
     1.  Chech how to distribute stuff over the Internet;
+
     2.  Channel sending may have a probabilistic killing of the sending
-        process;
+        process [WORK IN PROGRESS, almost done];
+
     3.  Logging system based on Event Handler (handle this **pumps
         shotgun**).
+
