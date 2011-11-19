@@ -44,13 +44,18 @@ init (Filters) ->
 %
 filter_apply (ConfirmTo, From, To, Msg, Filters) ->
     case Filters of
-        [] -> erlang:send(To, {From, Msg});
+        [] ->
+            erlang:send(To, {From, Msg}),
+            confirm(ConfirmTo);
         [Flt | Flts] -> case Flt(From, To, Msg) of
                             {F,T,M} -> filter_apply(ConfirmTo, F, T, M, Flts);
-                            Msg -> gen_server:reply(ConfirmTo, ok);
+                            Msg -> confirm(ConfirmTo);
                             _ -> throw({badarg, invalid_filter})
                         end
     end.
+
+confirm (To) ->
+    gen_server:reply(To, ok).
 
 handle_call ({send, To, Msg}, ConfirmTo = {From, _Ref}, Filters) ->
     spawn(fun () -> filter_apply(ConfirmTo, From, To, Msg, Filters) end),
