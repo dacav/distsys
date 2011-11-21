@@ -9,6 +9,44 @@ Consensus Protocol
 The project is still not working. This document is also not complete. It
 will be updated as new parts of the project will be added.
 
+## General structure
+
+The application is compliant with the _Erlang/OTP_ design principle.
+For the moment the tree is the following:
+
+<pre>
+yuna
+   main
+      services
+         log_serv
+         peers_keeper
+      peers
+         P0
+         P1
+         ...
+         Pn
+</pre>
+
+### Roles distribution
+
+*   The `main` supervisor is in charge of managing the whole application
+    (_oion strategy_, see Erlang documentation);
+
+*   The `services` supervisor keeps alive the services needed by the
+    system:
+
+    +   `log_serv` is a server in charge of providing a logging system
+        (see the *Logging* section);
+
+    +   `peers_keeper` is a server which:
+
+        -    Allows to startup the protocol (many different algorithms can
+             be provided);
+
+        -    Collects statistics about what's happening.
+
+*   The `peers` supervisor manages the peers, acting as pool.
+
 ## Communication logic
 
 Processes send data trough the underlying Erlang communication system (see
@@ -26,7 +64,7 @@ We want to be able to
 About the last point, since a failing process is no longer influencing the
 system with message, a good technique is making the faulty node crash just
 before it sends a message. More details on crashes are provided in the
-_Faulty processes_ section.
+*Faulty processes* section.
 
 This principle justifies the design of a transmission system based on
 filters.
@@ -64,3 +102,5 @@ filters.
         generator in order to properly use this abstraction.
 
 ## Faulty processes
+
+## Logging
