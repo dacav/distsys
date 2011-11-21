@@ -23,7 +23,7 @@ build_spec (Min, Max, Dist) ->
     #randspec {
         min = Min,
         max = Max,
-       dist = Dist
+        dist = Dist
     }.
 
 random_time (Spec) ->
