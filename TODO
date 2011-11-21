@@ -2,7 +2,8 @@ Stuff to do
 ===========
 
 1.  Chech how to distribute stuff over the Internet;
+    [Note: meanwhile a generic approach has been used];
 
-3.  Logging system based on Event Handler (handle this *pumps
+2.  Logging system based on Event Handler (handle this *pumps
     shotgun*).
 
