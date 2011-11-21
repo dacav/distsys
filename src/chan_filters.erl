@@ -1,6 +1,6 @@
 -module(chan_filters).
 -author("Giovanni Simoni").
--export([hitman/1, random_deliver/3, random_uniform_deliver/2]).
+-export([hitman/1, random_deliver/3]).
 
 -import(randel).
 
@@ -37,5 +37,3 @@ random_deliver (MinDelay, MaxDelay, DelayDist) ->
     Spec = randel:build_spec(MinDelay, MaxDelay, DelayDist),
     fun (F, T, M) -> randel:send_rand(Spec, T, {F, M}), M end.
 
-random_uniform_deliver (MinDelay, MaxDelay) ->
-    random_deliver(MinDelay, MaxDelay, fun random:uniform/0).

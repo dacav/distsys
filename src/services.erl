@@ -12,11 +12,6 @@
 -import(conf).
 
 init (_) ->
-    % Channel service descriptor
-    Channel = {channel,
-         {chan, start_link, conf:get_default(chan)},
-         permanent, ?KILL_THRESHOLD, supervisor, [chan]
-    },
     % Log service descriptor
     Logger = {logger,
                 {log_serv, start_link, conf:get_default(log_serv)},
@@ -25,7 +20,7 @@ init (_) ->
     % GO!
     {ok,
     	{{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART},
-         [Logger, Channel]
+         [Logger]
         }
   	}.
 
