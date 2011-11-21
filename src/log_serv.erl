@@ -23,7 +23,7 @@ default_conf () ->
 code_change (_, State, _) ->
     {ok, State}.
 
-handle_cast (_, State) ->
+handle_call (_, _, State) ->
     {noreply, State}.
 
 handle_info (_, State) ->
@@ -46,21 +46,22 @@ print_date (OutFile) ->
     io:format(OutFile, "~p/~p/~p ~p:~p:~p ", [Y,M,D,H,Mi,S]),
     ok.
 
-handle_call ({Format, Data}, _, OutFile)
+handle_cast ({Format, Data}, OutFile)
              when is_list(Format) and is_list(Data) ->
     Output = try io_lib:format(Format, Data)
              catch error:badarg -> io_lib:format("~p~p", [Format, Data])
              end,
+    print_date(OutFile),
     io:format(OutFile, Output, []),
-    {reply, ok, OutFile};
+    {noreply, OutFile};
 
-handle_call (S, _, OutFile) ->
+handle_cast (S, OutFile) ->
     Fmt = case is_list(S) of
           false -> "~p~n"; true -> "~s~n"
           end,
     print_date(OutFile),
     io:fwrite(OutFile, Fmt, [S]),
-    {reply, ok, OutFile}.
+    {noreply, OutFile}.
 
 start (OutFile) ->
     gen_server:start({local, ?MODULE}, ?MODULE, OutFile, []).
@@ -77,8 +78,8 @@ start_link () ->
     start_link(OutFile).
 
 log (Fmt, Args) ->
-    gen_server:call(?MODULE, {Fmt, Args}).
+    gen_server:cast(?MODULE, {Fmt, Args}).
 
 log (S) ->
-    gen_server:call(?MODULE, S).
+    gen_server:cast(?MODULE, S).
 

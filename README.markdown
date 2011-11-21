@@ -33,26 +33,26 @@ filters.
 
 ### Implementation
 
-*   As initial design, the sending was managed by a server, the `channel
-    manager`, which was in charge of keeping the list of filters to be
+*   As initial design, the sending was managed by a server, the _channel
+    manager_, which was in charge of keeping the list of filters to be
     applied to each communication.
 
-    +   The gen_server OTP system was used.
+    +   The `gen_server` OTP system was used.
 
     +   This design unfortunately prevents the process from being
         independent while sending, since they have to queue up before
-        talking with the `channel manager`.
+        talking with the _channel manager_.
 
 *   In order to avoid the bottleneck a more distributed approach has been
     adopted:
 
     +   During application startup the set of filters gets written in the
         global configuration
-        
+
         -   *Note*: filters are built basing on the application
             configuration, which in turn can be overriden by
             external configuration)
-        
+
     +   Under the hood, the `chan:send/2` function is in charge of
         retrieving and applying the filters;
 
