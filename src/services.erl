@@ -14,8 +14,8 @@
 init (_) ->
     % Channel service descriptor
     Channel = {channel,
-         {ranchan, start_link, conf:get_default(ranchan)},
-         permanent, ?KILL_THRESHOLD, worker, [ranchan]
+         {chan, start_link, conf:get_default(chan)},
+         permanent, ?KILL_THRESHOLD, supervisor, [chan]
     },
     % Log service descriptor
     Logger = {logger,

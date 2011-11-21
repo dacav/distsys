@@ -9,6 +9,8 @@
 -behavior(conf).
 -export([default_conf/0]).
 
+-import(chan_filters).
+
 % -----------------------------------------------------------------------
 % Unused callbacks
 % -----------------------------------------------------------------------
@@ -30,6 +32,7 @@ terminate (_, _) ->
 % -----------------------------------------------------------------------
 
 init (Filters) ->
+    random:seed(erlang:now()),
     {ok, Filters}.
 
 % This function assumes the message with its envelope, namely a tuple
@@ -42,24 +45,20 @@ init (Filters) ->
 %
 % If no filter sends the data, a regular sending will be achieved.
 %
-filter_apply (ConfirmTo, From, To, Msg, Filters) ->
+apply_filters (From, To, Msg, Filters) ->
     case Filters of
-        [] ->
-            erlang:send(To, {From, Msg}),
-            confirm(ConfirmTo);
-        [Flt | Flts] -> case Flt(From, To, Msg) of
-                            {F,T,M} -> filter_apply(ConfirmTo, F, T, M, Flts);
-                            Msg -> confirm(ConfirmTo);
-                            _ -> throw({badarg, invalid_filter})
-                        end
+        [] -> erlang:send(To, {From, Msg});
+        [Flt | Flts] ->
+            case Flt(From, To, Msg) of
+                {F,T,M} -> apply_filters(F, T, M, Flts);
+                Msg -> ok;
+                _ -> throw({badarg, invalid_filter})
+            end
     end.
 
-confirm (To) ->
-    gen_server:reply(To, ok).
-
-handle_call ({send, To, Msg}, ConfirmTo = {From, _Ref}, Filters) ->
-    spawn(fun () -> filter_apply(ConfirmTo, From, To, Msg, Filters) end),
-    {noreply, Filters}.
+handle_call ({send, To, Msg}, {From, _Ref}, Filters) ->
+    apply_filters(From, To, Msg, Filters),
+    {reply, ok, Filters}.
 
 % -----------------------------------------------------------------------
 % Interface
@@ -79,6 +78,7 @@ send (To, Msg) ->
 % -----------------------------------------------------------------------
 
 default_conf () -> [
-
+    chan_filters:hitman(0.2),
+    chan_filters:random_deliver(0, 1000, fun random:uniform/0)
 ].
 

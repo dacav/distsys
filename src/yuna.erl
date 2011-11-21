@@ -4,8 +4,9 @@
 
 -import(services).
 
-start (normal, Args) ->
-    io:format("Starting YUNA (~p)~n", [Args]),
+start (normal, _Args) ->
+    io:format("Initializing random seed...~n"),
+    io:format("Starting YUNA!~n"),
     services:start_link().
 
 stop (State) ->
