@@ -24,7 +24,7 @@ code_change (_, State, _) ->
     {ok, State}.
 
 handle_call (_, _, State) ->
-    {noreply, State}.
+    {reply, ok, State}.
 
 handle_info (_, State) ->
     % TODO: Log inconsistent behavior.
