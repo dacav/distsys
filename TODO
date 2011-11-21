@@ -1,11 +1,8 @@
-                               Stuff to do
-                               ~~~~~~~~~~~
+Stuff to do
+===========
 
-    1.  Chech how to distribute stuff over the Internet;
+1.  Chech how to distribute stuff over the Internet;
 
-    2.  Channel sending may have a probabilistic killing of the sending
-        process [WORK IN PROGRESS, almost done];
-
-    3.  Logging system based on Event Handler (handle this **pumps
-        shotgun**).
+3.  Logging system based on Event Handler (handle this *pumps
+    shotgun*).
 
