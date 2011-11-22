@@ -27,11 +27,9 @@ handle_call (_, _, State) ->
     {reply, ok, State}.
 
 handle_info (_, State) ->
-    % TODO: Log inconsistent behavior.
     {noreply, State}.
 
 terminate (_, _) ->
-    % TODO: Log termination
     ok.
 
 % -----------------------------------------------------------------------

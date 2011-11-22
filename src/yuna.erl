@@ -2,7 +2,7 @@
 -behavior(application).
 -export([start/2, stop/1]).
 
--import(services).
+-import(main).
 -import(chan_filters).
 
 build_closure ({M, F, A}) ->
@@ -27,12 +27,12 @@ set_channel () ->
     application:set_env(yuna, chan_filters, Filters).
 
 start (normal, _Args) ->
-    io:format("Setting tweaked channel...~n"),
+    io:format(standard_error, "Setting tweaked channel...~n", []),
     set_channel(),
-    io:format("Starting YUNA!~n"),
-    services:start_link().
+    io:format(standard_error, "Starting YUNA...~n", []),
+    main:start_link().
 
 stop (_State) ->
-    io:format("Terminating YUNA~n"),
+    io:format(standard_error, "Terminating YUNA~n", []),
     ok.
 
