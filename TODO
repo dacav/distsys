@@ -4,12 +4,16 @@ Stuff to do
 0.  Make channel filter aware of service communication (policies? no kill,
     no delay);
 
-1.  Chech how to distribute stuff over the Internet;
+1.  Add a state for which nodes are active but still not executing the
+    user code (the idea is: don't start until initialization is completed,
+    then go for a start message.
+
+2.  Chech how to distribute stuff over the Internet;
     [Note: meanwhile a generic approach has been used];
 
-2.  Logging system based on Event Handler (handle this *pumps
+3.  Logging system based on Event Handler (handle this *pumps
     shotgun*). Also rename decently the fucker;
 
-3.  Replace configuration system (from conf, to application configuration)
+4.  Replace configuration system (from conf, to application configuration)
     [Note: log_serv remaining].
 
