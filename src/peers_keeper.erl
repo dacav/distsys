@@ -1,13 +1,14 @@
 -module(peers_keeper).
 -author("Giovanni Simoni").
--export([start/0, start_link/0, notify_spawn/1, notify_death/1]).
+-export([start/0, start_link/0, notify_spawn/1, notify_death/1,
+         start_protocol/1]).
 
 -behavior(gen_server).
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
 
 % -----------------------------------------------------------------------
-% Unused callbacks
+% gen_server callbacks:
 % -----------------------------------------------------------------------
 
 code_change (_, State, _) ->
@@ -26,11 +27,15 @@ init (nil) ->
     {ok, nil}.
 
 handle_cast ({node_spawn, _Pid}, State) ->
-    % A new node is born
     {noreply, State};
+
 handle_cast ({node_death, _Pid}, State) ->
     % A node is dead
     {noreply, State}.
+
+% -----------------------------------------------------------------------
+% Interface
+% -----------------------------------------------------------------------
 
 start () ->
     gen_server:start({local, ?MODULE}, ?MODULE, nil, []).
@@ -43,4 +48,8 @@ notify_spawn (Pid) ->
 
 notify_death (Pid) ->
     gen_server:cast(?MODULE, {node_death, Pid}).
+
+start_protocol (_NodesSpec) ->
+    %lists:foreach(fun ({N, Module} start_nodes(N, Module) end, NodesSpec).
+    ok.
 
