@@ -27,11 +27,26 @@ init (nil) ->
     {ok, nil}.
 
 handle_cast ({node_spawn, _Pid}, State) ->
+    % A new node spawned up
     {noreply, State};
 
-handle_cast ({node_death, _Pid}, State) ->
+handle_cast ({node_result, _Pid, _Result}, State) ->
+    % A result has come
+    {noreply, State};
+
+handle_cast ({node_death, _Pid, _Reason}, State) ->
     % A node is dead
     {noreply, State}.
+
+% -----------------------------------------------------------------------
+% Internal logic
+% -----------------------------------------------------------------------
+
+node_send (Pid, Message) ->
+    chan:send_direct(Pid, {mail, Message}).
+
+node_meet (Pid, NewNeighbor) ->
+    chan:send_direct(Pid, {meet, NewNeighbor}).
 
 % -----------------------------------------------------------------------
 % Interface
@@ -46,8 +61,11 @@ start_link () ->
 notify_spawn (Pid) ->
     gen_server:cast(?MODULE, {node_spawn, Pid}).
 
-notify_death (Pid) ->
-    gen_server:cast(?MODULE, {node_death, Pid}).
+notify_death (Pid, Reason) ->
+    gen_server:cast(?MODULE, {node_death, Pid, Reason}).
+
+notify_result (Pid, Result) ->
+    gen_server:cast(?MODULE, {node_result, Pid, Result}).
 
 start_protocol (_NodesSpec) ->
     %lists:foreach(fun ({N, Module} start_nodes(N, Module) end, NodesSpec).

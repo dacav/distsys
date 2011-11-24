@@ -1,6 +1,8 @@
 Stuff to do
 ===========
 
+0.  Separate node behavior from API usable by nodes;
+
 0.  Make channel filter aware of service communication (policies? no kill,
     no delay);
 

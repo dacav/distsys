@@ -1,7 +1,10 @@
 -module(node).
 -author("Giovanni Simoni").
 
--export([behaviour_info/1, start_link/2, start/2, send/2, greet/1]).
+-export([behaviour_info/1, start_link/2, start/2]
+
+% Move in node API
+-export([send/2, greet/1]).
 
 -define(TIMEOUT, 5000).
 
@@ -22,21 +25,16 @@ init (Father, Ref, NodeModule, NodeArg) ->
         {ok, NodeData} ->
             peers_keeper:notify_spawn(self()),
             erlang:send(Father, {Ref, ok}),
-            loop(NodeModule, NodeData);
+            loop(self(), NodeModule, NodeData);
         {error, Reason} ->
             erlang:send(Father, {Ref, error, Reason})
     end.
 
-send (To, Msg) ->
-    chan:send(To, {mail, Msg}).
-
-greet (OtherPid) ->
-    chan:send(OtherPid, {meet, self()}).
-
-loop (NodeModule, NodeData) ->
+loop (NodeId, NodeModule, NodeData) ->
     NodeReaction =
         receive
-            {From, Msg} when is_pid(From) orelse From =:= anonymous ->
+            {From, Msg} when is_pid(From)
+                        orelse From =:= keeper ->
                 case Msg of
                     {mail, Msg} ->
                         NodeModule:got_message(From, Msg, NodeData);
@@ -47,9 +45,29 @@ loop (NodeModule, NodeData) ->
                 NodeModule:got_noise(Anything, NodeData)
         end,
     case NodeReaction of
-        {ok, NodeUpdatedData} -> loop(NodeModule, NodeUpdatedData);
-        {error, Reason} -> peers_keeper:notify_death(Reason)
+        {ok, NodeUpdatedData} ->
+            loop(NodeId, NodeModule, NodeUpdatedData);
+        {error, Reason} -> Reason
+            peers_keeper:notify_death(NodeId, Reason);
+        stop ->
+            peers_keeper:notify_death(NodeId, normal);
+        {stop, Result} ->
+            peers_keeper:notify_result(NodeId, Result);
+            peers_keeper:notify_death(NodeId, normal)
     end.
+
+% -----------------------------------------------------------------------
+% Commands available for Nodes (TODO: move in node API)
+% -----------------------------------------------------------------------
+
+send (To, Msg) ->
+    chan:send(To, {mail, Msg}).
+
+greet (OtherPid) ->
+    chan:send(OtherPid, {meet, self()}).
+
+notify_result (Result) ->
+    peers_keeper:notify_result(self(), Result).
 
 % -----------------------------------------------------------------------
 % Interface
