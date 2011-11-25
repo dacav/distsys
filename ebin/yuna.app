@@ -2,8 +2,9 @@
 
     {description, "YUNA - Distributed Consensus emulator"},
     {vsn, "0.0.1"},
-    {modules, [yuna, main, peers, peers_keeper, node, conf, log_serv,
-               chan, chan_filters, randel, services]},
+    {modules, [yuna, main, peers, peers_keeper, gen_node, node, conf,
+               log_serv, chan_node, chan_infr, chan_filters, randel,
+               services]},
     {registered, []},
     {application, [kernel, stdlib]},
     {mod, {yuna, []}},

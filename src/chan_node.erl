@@ -1,4 +1,4 @@
--module(chan).
+-module(chan_node).
 -author("Giovanni Simoni").
 -export([send/2]).
 
@@ -29,3 +29,4 @@ send (To, Msg) ->
         {ok, Filters} -> apply_filters(From, To, Msg, Filters);
         undefined -> throw(config_fail)
     end.
+

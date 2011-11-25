@@ -11,7 +11,6 @@
 -import(conf).
 
 init (nil) ->
-    % GO!
     io:format(standard_error, "Starting peers pool...~n", []),
     {ok, {{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART}, []}}.
 

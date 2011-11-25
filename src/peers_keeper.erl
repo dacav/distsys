@@ -1,11 +1,14 @@
 -module(peers_keeper).
 -author("Giovanni Simoni").
--export([start/0, start_link/0, notify_spawn/1, notify_death/1,
+-export([start/0, start_link/0, notify_spawn/1, notify_death/2,
          start_protocol/1]).
 
 -behavior(gen_server).
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
          init/1, terminate/2]).
+
+-import(chan_infr).
+-define(KILL_TIMEOUT, 1000).
 
 % -----------------------------------------------------------------------
 % gen_server callbacks:
@@ -43,20 +46,37 @@ handle_cast ({node_death, _Pid, _Reason}, State) ->
 % -----------------------------------------------------------------------
 
 node_send (Pid, Message) ->
-    chan:send_direct(Pid, {mail, Message}).
+    chan_infr:keeper_to_node(Pid, {mail, Message}).
 
 node_meet (Pid, NewNeighbor) ->
-    chan:send_direct(Pid, {meet, NewNeighbor}).
+    chan_infr:keeper_to_node(Pid, {meet, NewNeighbor}).
+
+start_nodes (N, Module) ->
+    Spec = {Module,
+        {Module, start_link, []},
+        transient, ?KILL_TIMEOUT, worker, dynamic
+    },
+    Pids = [supervisor:start_child(peers, Spec) || _ <- lists:seq(1, N)],
+    {Module, Pids}.
+
+start_protocol (NodesSpec) ->
+    lists:map(fun ({N, Module}) -> start_nodes(N, Module) end, NodesSpec).
 
 % -----------------------------------------------------------------------
 % Interface
 % -----------------------------------------------------------------------
+
+% -----------------------------------------------------------------------
+% Towards startup:
 
 start () ->
     gen_server:start({local, ?MODULE}, ?MODULE, nil, []).
 
 start_link () ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, nil, []).
+
+% -----------------------------------------------------------------------
+% Towards generic node (gen_node):
 
 notify_spawn (Pid) ->
     gen_server:cast(?MODULE, {node_spawn, Pid}).
@@ -67,7 +87,9 @@ notify_death (Pid, Reason) ->
 notify_result (Pid, Result) ->
     gen_server:cast(?MODULE, {node_result, Pid, Result}).
 
-start_protocol (_NodesSpec) ->
-    %lists:foreach(fun ({N, Module} start_nodes(N, Module) end, NodesSpec).
-    ok.
+% -----------------------------------------------------------------------
+% Towards specific node (chan_infr):
+
+node_notification (Pid, Message) ->
+    gen_server:cast(?MODULE, {node_notify, Pid, Message}).
 
