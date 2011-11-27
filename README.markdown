@@ -19,7 +19,7 @@ yuna
    main
       services
          log_serv
-         peers_keeper
+         keeper
       peers
          P0
          P1
@@ -38,14 +38,39 @@ yuna
     +   `log_serv` is a server in charge of providing a logging system
         (see the *Logging* section);
 
-    +   `peers_keeper` is a server which:
+    +   `keeper` is a process which:
 
-        -    Allows to startup the protocol (many different algorithms can
-             be provided);
+        -   Is defined at application startup;
 
-        -    Collects statistics about what's happening.
+        -   Corresponds to a user-defined module which implements the
+            _behavs/keeper_ behavior (`behaves/keeper.erl`);
+
+        -   Can start/stop a protocol, add nodes (basing on a node
+            module);
+
+        -   Is notified about node-related events happened during protocol
+            execution;
+
+        -   Can tweak the protocol by injecting messages in nodes message
+            queue (`keeper_inject:send/2,3`, `keeper_inject:introduce/2`).
 
 *   The `peers` supervisor manages the peers, acting as pool.
+
+    +   Peers are processes injected into the protocol by the `keeper`
+        component.
+
+    +   Each peer:
+
+        -   Is defined by the `keeper` process logic (thus managed by the
+            user);
+
+        -   Corresponds to a user-defined module which implements the _peer_
+            behavior (`behavs/peer.erl`);
+
+        -   Is provided with an API which allows to communicate with other
+            peers (`peer_chan:send/2`, `peer_chan:greet/1`), interact with
+            the keeper (`peer_ctrl:notify_spawn/0`,
+            `peer_ctrl:notify_result/1`, `peer_ctrl:notify_term/0,1`).
 
 ## Communication logic
 

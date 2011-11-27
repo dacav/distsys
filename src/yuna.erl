@@ -8,15 +8,24 @@
 build_closure ({M, F, A}) ->
     fun () -> apply(M, F, A) end.
 
-set_channel () ->
+get_conf (Key) ->
+    case application:get_env(yuna, Key) of
+        {ok, Value} -> Value;
+        undefined -> throw({configuration, Key})
+    end.
+
+set_conf (Key, Value) ->
+    application:set_env(yuna, Key, Value).
+
+conf_channel () ->
     % Settings for: Faulty nodes
-    {ok, FaultyProb} = application:get_env(yuna, faulty_prob),
-    {ok, FaultyFailProb} = application:get_env(yuna, faulty_fail_prob),
+    FaultyProb = get_conf(faulty_prob),
+    FaultyFailProb = get_conf(faulty_fail_prob),
 
     % Settings for: Random delay in delivery
-    {ok, MinDelay} = application:get_env(yuna, deliver_mindel),
-    {ok, MaxDelay} = application:get_env(yuna, deliver_maxdel),
-    {ok, DelayDist} = application:get_env(yuna, deliver_dist),
+    MinDelay = get_conf(deliver_mindel),
+    MaxDelay = get_conf(deliver_maxdel),
+    DelayDist = get_conf(deliver_dist),
 
     Filters = [
         chan_filters:hitman(FaultyProb * FaultyFailProb),
@@ -24,13 +33,26 @@ set_channel () ->
                                     build_closure(DelayDist))
     ],
 
-    application:set_env(yuna, chan_filters, Filters).
+    set_conf(chan_filters, Filters).
+
+conf_keeper () ->
+    Keeper = get_conf(keeper),
+    KeeperArgs = get_conf(keeper_args),
+    {Keeper, KeeperArgs}.
 
 start (normal, _Args) ->
-    io:format(standard_error, "Setting tweaked channel...~n", []),
-    set_channel(),
-    io:format(standard_error, "Starting YUNA...~n", []),
-    main:start_link().
+    io:format(standard_error, "Loading configuration...~n", []),
+    try
+        conf_channel(),
+        {Keeper, KeeperArgs} = conf_keeper(),
+        io:format(standard_error, "Starting YUNA...~n", []),
+        main:start_link(Keeper, KeeperArgs)
+    catch
+        throw:{configuration, Key} ->
+            io:format(standard_error,
+                      "ERROR: Bad configuration, missing '~p'~n",
+                      [Key])
+    end.
 
 stop (_State) ->
     io:format(standard_error, "Terminating YUNA~n", []),

@@ -1,6 +1,6 @@
--module(chan).
+-module(tweaked_chan).
 -author("Giovanni Simoni").
--export([send/2]).
+-export([send/2, untweaked_send/3]).
 
 % This function assumes the message with its envelope, namely a tuple
 % {To, From, Msg}.
@@ -29,3 +29,6 @@ send (To, Msg) ->
         {ok, Filters} -> apply_filters(From, To, Msg, Filters);
         undefined -> throw(config_fail)
     end.
+
+untweaked_send (From, To, Msg) ->
+    erlang:send(To, {From, Msg}).

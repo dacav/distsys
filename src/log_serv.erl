@@ -50,7 +50,7 @@ handle_cast ({Format, Data}, OutFile)
              catch error:badarg -> io_lib:format("~p~p", [Format, Data])
              end,
     print_date(OutFile),
-    io:format(OutFile, Output, []),
+    io:format(OutFile, "~s~n", [Output]),
     {noreply, OutFile};
 
 handle_cast (S, OutFile) ->

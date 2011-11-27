@@ -14,7 +14,9 @@
         {faulty_fail_prob, 0.5},    % Probability of crash for faulty node
         {deliver_mindel, 500},      % Minimum deliver delay
         {deliver_maxdel, 1500},     % Maximum deliver delay
-        {deliver_dist, {random, uniform, []}}   % Delay distribution
+        {deliver_dist, {random, uniform, []}},  % Delay distribution
+        {keeper, pingpong_keeper},  % Nodes keeper
+        {keeper_args, [3]}
     ]}
 
 ]}.
