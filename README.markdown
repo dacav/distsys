@@ -1,8 +1,10 @@
 # YUNA Project
 
+<pre>
 Y U NO Agree? -- щ(ﾟДﾟщ)  
 Distributed System Project  
 Consensus Protocol
+</pre>
 
 ### Note:
 
@@ -40,19 +42,22 @@ yuna
 
     +   `keeper` is a process which:
 
-        -   Is defined at application startup;
+        -   Is defined at application startup (configuration file);
 
-        -   Corresponds to a user-defined module which implements the
-            _behavs/keeper_ behavior (`behaves/keeper.erl`);
+        -   Corresponds to a user-defined module, henceforth `Module`
+            which implements the _behavs/gen_keeper_ behavior
+            (`behaves/gen_keeper.erl`);
 
-        -   Can start/stop a protocol, add nodes (basing on a node
-            module);
+        -   Can add nodes to a protocol (`keeper_proto:add_peers/3`);
 
         -   Is notified about node-related events happened during protocol
-            execution;
+            execution (`Module:handle_spawn_notify/2`,
+            `Module:handle_result_notify/3`,
+            `Module:handle_term_notify/4`, `Module:handle_info/2`);
 
         -   Can tweak the protocol by injecting messages in nodes message
-            queue (`keeper_inject:send/2,3`, `keeper_inject:introduce/2`).
+            queue, possibly with a spoofed pid (`keeper_inject:send/2,3`,
+            `keeper_inject:introduce/2,3`).
 
 *   The `peers` supervisor manages the peers, acting as pool.
 
@@ -75,7 +80,7 @@ yuna
 ## Communication logic
 
 Processes send data trough the underlying Erlang communication system (see
-the Erlang documentation: `erlang:send/2`).
+the Erlang documentation for `erlang:send/2`).
 
 We want to be able to
 
@@ -116,7 +121,7 @@ filters.
             configuration, which in turn can be overriden by
             external configuration)
 
-    +   Under the hood, the `chan:send/2` function is in charge of
+    +   Under the hood, the `peer_chan:send/2` function is in charge of
         retrieving and applying the filters;
 
 *   Drawbacks:
@@ -124,7 +129,8 @@ filters.
     +   As failure is a stochastic event, the behavior is dictated by the
         random generator. In _Erlang_, however, there's one PRNG is
         per-process, thus each process is forced to initialize the random
-        generator in order to properly use this abstraction.
+        generator in order to properly use this abstraction. This is now
+        automatically achieved during startup of peers.
 
 ## Faulty processes
 
