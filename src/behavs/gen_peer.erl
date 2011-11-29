@@ -45,4 +45,8 @@ loop (NodeModule, NodeData) ->
     end.
 
 start_link (Module, Args) ->
-    utils:startup(fun erlang:spawn_link/1, fun loop/2, Module, Args).
+    % This will initialize random generator on peers (used for random
+    % delay/kill during transmission).
+    InitPRNG = fun () -> random:seed(now()), ok end,
+    utils:startup(fun erlang:spawn_link/1, InitPRNG, fun loop/2,
+                  Module, Args).

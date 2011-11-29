@@ -38,5 +38,6 @@ loop (Module, Arg) ->
     end.
 
 start_link (Module, Args) ->
-    utils:startup(fun erlang:spawn_link/1, keeper, fun loop/2,
+    Register = fun () -> erlang:register(keeper, self()), ok end,
+    utils:startup(fun erlang:spawn_link/1, Register, fun loop/2,
                   Module, Args).
