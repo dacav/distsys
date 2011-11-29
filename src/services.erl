@@ -19,7 +19,7 @@ init ([Keeper, KeeperArgs]) ->
     % Peers keeper server
     PeersKeeper = {peers_keeper,
         {gen_keeper, start_link, [Keeper, KeeperArgs]},
-         permanent, ?KILL_THRESHOLD, worker, [peers_keeper]
+         transient, ?KILL_THRESHOLD, worker, [peers_keeper]
     },
     % GO!
     io:format(standard_error, "Starting services...~n", []),

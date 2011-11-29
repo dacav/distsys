@@ -11,24 +11,26 @@ behaviour_info(callbacks) -> [
     {init, 1},                  % params: Arg from start_link
     {handle_message, 3},        % params: From, To, PrivateData
     {handle_introduction, 3},   % params: From, NewPeer, PrivateData
-    {handle_noise, 2}           % params: Noise, PrivateData
+    {handle_info, 2}            % params: Info, PrivateData
 ];
 behaviour_info(_) -> undefined.
 
 loop (NodeModule, NodeData) ->
-    peer_ctrl:notify_spawn(),
     NodeReaction =
         receive
             {From, Msg} when is_pid(From)
                         orelse From =:= keeper ->
                 case Msg of
-                    {mail, Msg} ->
-                        NodeModule:handle_message(From, Msg, NodeData);
-                    {meet, Pid} ->
-                        NodeModule:handle_introduction(From, Pid, NodeData)
+                    {mail, Content} ->
+                        NodeModule:handle_message(From, Content, NodeData);
+                    {meet, Friend} ->
+                        NodeModule:handle_introduction(From, Friend,
+                                                       NodeData);
+                    Anything ->
+                        NodeModule:handle_info({From, Anything}, NodeData)
                 end;
             Anything ->
-                NodeModule:handle_noise(Anything, NodeData)
+                NodeModule:handle_info(Anything, NodeData)
         end,
     case NodeReaction of
         {ok, NodeUpdatedData} ->

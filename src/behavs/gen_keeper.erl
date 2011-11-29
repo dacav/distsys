@@ -9,7 +9,8 @@ behaviour_info(callbacks) -> [
     {init, 1},                  % params: Arg from start_link
     {handle_spawn_notify, 2},   % params: Pid, Arg
     {handle_result_notify, 3},  % params: Pid, Result, Arg
-    {handle_term_notify, 3}     % params: Pid, Reason, Arg
+    {handle_term_notify, 4},    % params: Pid, Ref | undefined, Reason, Arg
+    {handle_info, 2}            % params: Anything from down stack, Arg
 ];
 behaviour_info(_) -> undefined.
 
@@ -21,7 +22,11 @@ loop (Module, Arg) ->
             {result, Pid, Result} ->
                 Module:handle_result_notify(Pid, Result, Arg);
             {term, Pid, Reason} ->
-                Module:handle_term_notify(Pid, Reason, Arg)
+                Module:handle_term_notify(Pid, undefined, Reason, Arg);
+            {'DOWN', Ref, process, Pid, Reason} ->
+                Module:handle_term_notify(Pid, Ref, Reason, Arg);
+            Anything ->
+                Module:handle_info(Anything, Arg)
         end,
     case KeeperReaction of
         {ok, UpdatedArg} ->
@@ -33,5 +38,5 @@ loop (Module, Arg) ->
     end.
 
 start_link (Module, Args) ->
-     utils:startup(fun erlang:spawn_link/1, keeper, fun loop/2,
-                   Module, Args).
+    utils:startup(fun erlang:spawn_link/1, keeper, fun loop/2,
+                  Module, Args).

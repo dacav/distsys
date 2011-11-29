@@ -39,25 +39,25 @@ terminate (_, _) ->
 init (OutFile) ->
     {ok, OutFile}.
 
-print_date (OutFile) ->
+print_head (Who, OutFile) ->
     {{Y,M,D},{H,Mi,S}} = calendar:local_time(),
-    io:format(OutFile, "~p/~p/~p ~p:~p:~p ", [Y,M,D,H,Mi,S]),
+    io:format(OutFile, "~p/~p/~p ~p:~p:~p ~p  ", [Y,M,D,H,Mi,S,Who]),
     ok.
 
-handle_cast ({Format, Data}, OutFile)
+handle_cast ({Who, Format, Data}, OutFile)
              when is_list(Format) and is_list(Data) ->
     Output = try io_lib:format(Format, Data)
              catch error:badarg -> io_lib:format("~p~p", [Format, Data])
              end,
-    print_date(OutFile),
+    print_head(Who, OutFile),
     io:format(OutFile, "~s~n", [Output]),
     {noreply, OutFile};
 
-handle_cast (S, OutFile) ->
+handle_cast ({Who, S}, OutFile) ->
     Fmt = case is_list(S) of
           false -> "~p~n"; true -> "~s~n"
           end,
-    print_date(OutFile),
+    print_head(Who, OutFile),
     io:fwrite(OutFile, Fmt, [S]),
     {noreply, OutFile}.
 
@@ -76,8 +76,8 @@ start_link () ->
     start_link(OutFile).
 
 log (Fmt, Args) ->
-    gen_server:cast(?MODULE, {Fmt, Args}).
+    gen_server:cast(?MODULE, {self(), Fmt, Args}).
 
 log (S) ->
-    gen_server:cast(?MODULE, S).
+    gen_server:cast(?MODULE, {self(), S}).
 
