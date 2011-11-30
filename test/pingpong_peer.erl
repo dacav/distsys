@@ -1,7 +1,8 @@
 -module(pingpong_peer).
 -author("Giovanni Simoni").
 -behavior(gen_peer).
--export([init/1, handle_message/3, handle_introduction/3, handle_info/2]).
+-export([init/1, handle_message/3, handle_introduction/3, handle_info/2,
+         handle_beacon/1]).
 
 -import(peer_chan).
 -import(peer_ctrl).
@@ -27,8 +28,13 @@ handle_introduction (From, NewNode, Next) ->
     log_serv:log("Introduction from ~p. Setting next: from ~p to ~p",
                  [From, Next, NewNode]),
     peer_chan:send(NewNode, "Oh hi!"),
+    peer_chan:bcast_send("Got new friend!"),
     {ok, NewNode}.
 
 handle_info (Noise, Next) ->
     log_serv:log("Got noise: ~p", [Noise]),
+    {ok, Next}.
+
+handle_beacon (Next) ->
+    log_serv:log("Got beacon"),
     {ok, Next}.

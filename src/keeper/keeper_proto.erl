@@ -1,6 +1,8 @@
 -module(keeper_proto).
 -author("Giovanni Simoni").
--export([add_peers/3]).
+-export([add_peers/3, enable_beacon/1, disable_beacon/0]).
+
+-import(bcast).
 
 build_spec (I, Module, PeerArg) ->
     {{peer, I},
@@ -23,3 +25,9 @@ add_peers (N, Module, PeerArgs) when is_number(N) andalso N > 0 ->
         ok -> {ok, lists:map(fun start_child/1, Specs)};
         {error, Error} -> throw({wrong_child_specs, Error})
     end.
+
+enable_beacon (MilliSeconds) when MilliSeconds > 0 ->
+    bcast:enable_beacon (MilliSeconds).
+
+disable_beacon () ->
+    bcast:disable_beacon ().

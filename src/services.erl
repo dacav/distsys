@@ -19,17 +19,21 @@ init ([Keeper, KeeperArgs]) ->
     % Peers keeper server
     PeersKeeper = {peers_keeper,
         {gen_keeper, start_link, [Keeper, KeeperArgs]},
-         transient, ?KILL_THRESHOLD, worker, [peers_keeper]
+        transient, ?KILL_THRESHOLD, worker, [peers_keeper]
+    },
+    %
+    BroadCast = {bcast,
+        {bcast, start_link, []},
+        permanent, ?KILL_THRESHOLD, worker, [bcast]
     },
     % GO!
     io:format(standard_error, "Starting services...~n", []),
     {ok,
     	{{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART},
-         [Logger, PeersKeeper]
+         [Logger, BroadCast, PeersKeeper]
         }
   	}.
 
 start_link (Keeper, KeeperArgs) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE,
                           [Keeper, KeeperArgs]).
-

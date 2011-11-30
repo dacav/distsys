@@ -6,11 +6,13 @@
 
 -import(utils).
 -import(peer_ctrl).
+-import(bcast).
 
 behaviour_info(callbacks) -> [
     {init, 1},                  % params: Arg from start_link
     {handle_message, 3},        % params: From, To, PrivateData
     {handle_introduction, 3},   % params: From, NewPeer, PrivateData
+    {handle_beacon, 1},         % params: PrivateData
     {handle_info, 2}            % params: Info, PrivateData
 ];
 behaviour_info(_) -> undefined.
@@ -19,13 +21,16 @@ loop (NodeModule, NodeData) ->
     NodeReaction =
         receive
             {From, Msg} when is_pid(From)
-                        orelse From =:= keeper ->
+                        orelse From =:= keeper
+                        orelse From =:= bcast ->
                 case Msg of
                     {mail, Content} ->
                         NodeModule:handle_message(From, Content, NodeData);
                     {meet, Friend} ->
                         NodeModule:handle_introduction(From, Friend,
                                                        NodeData);
+                    beacon ->
+                        NodeModule:handle_beacon(NodeData);
                     Anything ->
                         NodeModule:handle_info({From, Anything}, NodeData)
                 end;
@@ -45,8 +50,13 @@ loop (NodeModule, NodeData) ->
     end.
 
 start_link (Module, Args) ->
-    % This will initialize random generator on peers (used for random
+    % This will initialize the PRNG on peers (used for random
     % delay/kill during transmission).
-    InitPRNG = fun () -> random:seed(now()), ok end,
-    utils:startup(fun erlang:spawn_link/1, InitPRNG, fun loop/2,
+    Init =
+        fun () ->
+            random:seed(now()),
+            bcast:subscribe(),
+            ok
+        end,
+    utils:startup(fun erlang:spawn_link/1, Init, fun loop/2,
                   Module, Args).

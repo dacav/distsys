@@ -3,7 +3,7 @@
     {description, "YUNA - Distributed Consensus emulator"},
     {vsn, "0.0.1"},
     {modules, [yuna, main, peers, conf, log_serv, chan, chan_filters,
-               randel, services]},
+               randel, services, bcast]},
     {registered, []},
     {application, [kernel, stdlib]},
     {mod, {yuna, []}},

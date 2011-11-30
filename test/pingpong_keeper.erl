@@ -12,6 +12,7 @@
                  npeers}).
 
 init (NPeers) ->
+    keeper_proto:enable_beacon(5000),
     PeersRef =
         case keeper_proto:add_peers(NPeers, pingpong_peer, [nil]) of
             {ok, Lst} -> Lst;
