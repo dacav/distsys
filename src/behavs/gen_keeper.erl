@@ -32,9 +32,9 @@ loop (Module, Arg) ->
         {ok, UpdatedArg} ->
             loop(Module, UpdatedArg);
         {error, E} ->
-            log_serv:log("Keeper is dead: ~p~n", [E]);
+            log_serv:log("Keeper is dead: ~p", [E]);
         stop ->
-            log_serv:log("Keeper finished.~n")
+            log_serv:log("Keeper finished.")
     end.
 
 start_link (Module, Args) ->

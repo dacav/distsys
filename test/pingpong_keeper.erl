@@ -28,7 +28,7 @@ decrease_waiting (Status) ->
 
 kill_and_remove (Pid, Status) ->
     exit(Pid, kill),
-    Spawned = lists:filter(fun (X) -> X =:= Pid end,
+    Spawned = lists:filter(fun (X) -> X =/= Pid end,
                            Status#status.spawned),
     case Spawned of
         [] -> stop;
@@ -79,17 +79,23 @@ handle_result_notify (Pid, Result, Status) ->
     log_serv:log("Result from ~p: ~p", [Pid, Result]),
     case kill_and_remove(Pid, Status) of
         stop ->
-            log_serv:log("Game over."),
+            log_serv:log("No more processes. Game over."),
             stop;
         NewStatus ->
-            log_serv:log("Killed the process. Now restart!"),
-            run_pingpong(Status#status.spawned,
-                         Status#status.npeers),
+            log_serv:log("Killed the process."),
             {ok, NewStatus}
     end.
 
 handle_term_notify (Pid, _Ref, Reason, Status) ->
-    log_serv:log("Terminated ~p: ~p~n", [Pid, Reason]),
+    log_serv:log("Terminated ~p: ~p", [Pid, Reason]),
+    case Reason of
+        crashed ->
+            log_serv:log("We had a crash. Game over");
+        killed ->
+            log_serv:log("Killed successfully. Going on..."),
+            run_pingpong(Status#status.spawned,
+                         Status#status.npeers)
+    end,
     {ok, Status}.
 
 handle_info (Info, Status) ->
