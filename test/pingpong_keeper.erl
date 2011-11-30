@@ -28,6 +28,7 @@ decrease_waiting (Status) ->
             npeers = Status#status.npeers}.
 
 kill_and_remove (Pid, Status) ->
+    log_serv:log("killing and removing ~p", [Pid]),
     exit(Pid, kill),
     Spawned = lists:filter(fun (X) -> X =/= Pid end,
                            Status#status.spawned),
@@ -81,6 +82,7 @@ handle_result_notify (Pid, Result, Status) ->
     case kill_and_remove(Pid, Status) of
         stop ->
             log_serv:log("No more processes. Game over."),
+            keeper_proto:disable_beacon(),
             stop;
         NewStatus ->
             log_serv:log("Killed the process."),
@@ -91,13 +93,17 @@ handle_term_notify (Pid, _Ref, Reason, Status) ->
     log_serv:log("Terminated ~p: ~p", [Pid, Reason]),
     case Reason of
         crashed ->
-            log_serv:log("We had a crash. Game over");
+            log_serv:log("We had a crash. Game over"),
+            lists:foldl(fun kill_and_remove/2, Status,
+                        Status#status.spawned),
+            keeper_proto:disable_beacon(),
+            stop;
         killed ->
             log_serv:log("Killed successfully. Going on..."),
             run_pingpong(Status#status.spawned,
-                         Status#status.npeers)
-    end,
-    {ok, Status}.
+                         Status#status.npeers),
+            {ok, Status}
+    end.
 
 handle_info (Info, Status) ->
     log_serv:log("Got info: ~p", [Info]),
