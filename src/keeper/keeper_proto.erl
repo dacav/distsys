@@ -19,8 +19,8 @@ start_child (ChildSpec) ->
         {error, E} -> throw({cannot_spawn, E})
     end.
 
-add_peers (N, Module, PeerArgs) when is_number(N) andalso N > 0 ->
-    Specs = [build_spec(I, Module, PeerArgs) || I <- lists:seq(1, N)],
+add_peers (N, Module, PeerArg) when is_number(N) andalso N > 0 ->
+    Specs = [build_spec(I, Module, [PeerArg]) || I <- lists:seq(1, N)],
     case supervisor:check_childspecs(Specs) of
         ok -> {ok, lists:map(fun start_child/1, Specs)};
         {error, Error} -> throw({wrong_child_specs, Error})

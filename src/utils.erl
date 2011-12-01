@@ -6,10 +6,10 @@
 
 -import(log_serv).
 
-init (Father, GenInit, Loop, Ref, NodeModule, NodeArg) ->
+init (Father, GenInit, Loop, Ref, NodeModule, NodeArgs) ->
     case GenInit() of
         ok ->
-            case apply(NodeModule, init, NodeArg) of
+            case apply(NodeModule, init, NodeArgs) of
                 {ok, NodeData} ->
                     erlang:send(Father, {Ref, ok}),
                     Loop(NodeModule, NodeData);
