@@ -6,7 +6,7 @@
 -import(bcast).
 
 build_spec (I, Module, PeerArg) ->
-    {{peer, I},
+    {{peer, Module, I},
      {gen_peer, start_link, [Module, PeerArg]},
      temporary,
      brutal_kill,
