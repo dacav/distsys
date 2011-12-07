@@ -1,12 +1,18 @@
 -module(faildet).
 -author("Giovanni Simoni").
--export([new/2, merge/2, periodic_purge/1, get_neighbors/1,
+-export([new/3, merge/2, period/1, get_neighbors/1,
          get_gossip_message/1]).
 
 -record(fd, {
     known=gb_trees:empty(),
+
+    % Timing
     tfail,
-    tcleanup
+    tcleanup,
+    tgossip,
+
+    heartbeat = 0,  % My own heartbeat
+    gossip_cd       % Countdown to gossip time
 }).
 
 -record(neighbor, {
@@ -15,13 +21,19 @@
     ttk             % Time to Keep
 }).
 
-new (TFail, TCleanup) when is_number(TFail)
-                      andalso is_number(TCleanup)
-                      andalso TFail > 0
-                      andalso TCleanup > 0 ->
+new (TFail, TCleanup, TGossip)
+        when    is_number(TFail)
+        andalso is_number(TCleanup)
+        andalso is_number(TGossip)
+        andalso TFail > 0
+        andalso TCleanup > 0
+        andalso TGossip > 0
+     ->
     #fd{
         tfail = TFail,
-        tcleanup = TCleanup
+        tcleanup = TCleanup,
+        tgossip = TGossip,
+        gossip_cd = TGossip
     }.
 
 update_pid (Pid, Known, ToDo, Update, New) ->
@@ -55,8 +67,7 @@ update (Pid, Heartbeat, Known, TFail, TCleanup) ->
                 ttk = TCleanup
             }
         end,
-    New = #neighbor {
-    },
+    New = #neighbor{},
     update_pid(Pid, Known, Action, Update, New).
 
 merge (KnownList, FD) ->
@@ -82,7 +93,7 @@ purge_iteration (Known, Action, Update, Iterator) ->
             Known
     end.
 
-periodic_purge (FD = #fd{ known=Known }) ->
+purge_known (Known) ->
     Action =
         fun (Record) ->
             case Record#neighbor.ttk of
@@ -105,26 +116,42 @@ periodic_purge (FD = #fd{ known=Known }) ->
         end,
     NewKnown = purge_iteration(Known, Action, Update,
                                gb_trees:iterator(Known)),
+    case gb_trees:size(NewKnown) < 0.8 * gb_trees:size(Known) of
+        true -> gb_trees:balance(NewKnown);
+        false -> NewKnown
+    end.
+
+period (FD = #fd{ known = Known, heartbeat = HB }) ->
+    {GossipCD, Heartbeat} =
+        case FD#fd.gossip_cd of
+            expired -> {FD#fd.tgossip, HB};
+            1 -> {expired, HB + 1};
+            N -> {N - 1, HB}
+        end,
     FD#fd{
-        known =
-            case gb_trees:size(NewKnown) < 0.8 * gb_trees:size(Known) of
-                true -> gb_trees:balance(NewKnown);
-                false -> NewKnown
-            end
+        known = purge_known(Known),
+        gossip_cd = GossipCD,
+        heartbeat = Heartbeat
     }.
 
 get_neighbors (#fd{ known=Known }) ->
     gb_trees:keys(Known).
 
-get_gossip_message (#fd{ known=Known}) ->
-    IsAlive =
-        fun ({_, Record}) ->
-            Record#neighbor.ttl > 0
-        end,
-    Unpack =
-        fun ({Pid, Record}) ->
-            {Pid, Record#neighbor.heartbeat}
-        end,
-    KnownList = gb_trees:to_list(Known),
-    lists:map(Unpack, lists:filter(IsAlive, KnownList)).
-
+get_gossip_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
+    case GCD of
+        expired ->
+            IsAlive =
+                fun ({_, Record}) ->
+                    Record#neighbor.ttl > 0
+                end,
+            Unpack =
+                fun ({Pid, Record}) ->
+                    {Pid, Record#neighbor.heartbeat}
+                end,
+            KnownList = gb_trees:to_list(Known),
+            AllOther = lists:map(Unpack, lists:filter(IsAlive, KnownList)),
+            MySelf = {self(), HB},
+            [MySelf | AllOther];
+        _ ->
+            none
+    end.

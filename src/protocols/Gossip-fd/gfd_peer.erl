@@ -8,11 +8,14 @@
 -import(peer_ctrl).
 
 -record(status, {
-    fd = 
+    fd,
 })
 
-init (_Arg) ->
-    {ok, nil}.
+init ({TFail, TCleanup, TGossip}) ->
+    Status = #status{
+        fd = faildet:new(TFail, TCleanup, TGossip),
+    }
+    {ok, Status}.
 
 handle_message (_From, _Msg, _Prvt) ->
     {ok, nil}.
@@ -23,5 +26,10 @@ handle_introduction (_From, _Other, _Prvt) ->
 handle_info (_Noise, _Prvt) ->
     {ok, nil}.
 
-handle_beacon (_Prvt) ->
-    {ok, nil}.
+handle_beacon (Status = #status{ fd=FD }) ->
+    NewFD = faildet:period(FD),
+    NewFD = faildet:period(FD),
+    NewStatus = Status#{
+        fd = NewFD,
+    }
+    {ok, NewStatus}.
