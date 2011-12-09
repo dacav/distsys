@@ -39,15 +39,15 @@ new (TFail, TCleanup, TGossip)
 update_pid (Pid, Known, ToDo, Update, New) ->
     case gb_trees:lookup(Pid, Known) of
         none ->
-            {true, gb_trees:insert(Pid, Update(New), Known)};
+            {insert, gb_trees:insert(Pid, Update(New), Known)};
         {value, Current} ->
             case ToDo(Current) of
                 leave ->
-                    {false, Known};
+                    {leave, Known};
                 update ->
-                    {true, gb_trees:update(Pid, Update(Current), Known)};
+                    {update, gb_trees:update(Pid, Update(Current), Known)};
                 drop ->
-                    {true, gb_trees:delete(Pid, Known)}
+                    {drop, gb_trees:delete(Pid, Known)}
             end
     end.
 
@@ -72,25 +72,34 @@ update (Pid, Heartbeat, Known, TFail, TCleanup) ->
 
 merge (KnownList, FD) ->
     Update =
-        fun ({Pid, Hb}, {Chs, Kns}) ->
-            {IsUpdated, NewKns} = update(Pid, Hb, Kns, FD#fd.tfail,
-                                         FD#fd.tcleanup),
-            case IsUpdated of
-                true -> {[Pid | Chs], NewKns};
-                false -> {Chs, NewKns}
+        fun ({Pid, Hb}, {Brn, Kns}) ->
+            case update(Pid, Hb, Kns, FD#fd.tfail,
+                        FD#fd.tcleanup) of
+                {insert, NewKns} -> {[Pid | Brn], NewKns};
+                {_, NewKns} -> {Brn, NewKns}
             end
         end,
-    {Changed, NewKnown} = lists:foldl(Update, {[], FD#fd.known},
-                                      KnownList),
-    {Changed, FD#fd{known=NewKnown}}.
+    {Born, NewKnown} = lists:foldl(Update, {[], FD#fd.known},
+                                   KnownList),
+    {Born, FD#fd{
+               known = NewKnown
+           }
+    }.
 
-purge_iteration (Known, Action, Update, Iterator) ->
+purge_iteration (Known, Dead, Action, Update, Iterator) ->
     case gb_trees:next(Iterator) of
         {Pid, _, Next} ->
-            {_, NewKnown} = update_pid(Pid, Known, Action, Update, none),
-            purge_iteration(NewKnown, Action, Update, Next);
+            {What, NewKnown} = update_pid(Pid, Known, Action,
+                                          Update, none),
+            NewDead =
+                case What of
+                    drop -> [Pid | Dead];                           
+                    _ -> Dead
+                end,
+            purge_iteration(NewKnown, NewDead, Action,
+                            Update, Next);
         none ->
-            Known
+            {Dead, Known}
     end.
 
 purge_known (Known) ->
@@ -114,11 +123,11 @@ purge_known (Known) ->
                 ttk = TTK
             }
         end,
-    NewKnown = purge_iteration(Known, Action, Update,
-                               gb_trees:iterator(Known)),
+    {Dead, NewKnown} = purge_iteration(Known, [], Action, Update,
+                                       gb_trees:iterator(Known)),
     case gb_trees:size(NewKnown) < 0.8 * gb_trees:size(Known) of
-        true -> gb_trees:balance(NewKnown);
-        false -> NewKnown
+        true -> {Dead, gb_trees:balance(NewKnown)};
+        false -> {Dead, NewKnown}
     end.
 
 period (FD = #fd{ known = Known, heartbeat = HB }) ->
@@ -128,14 +137,16 @@ period (FD = #fd{ known = Known, heartbeat = HB }) ->
             1 -> {expired, HB + 1};
             N -> {N - 1, HB}
         end,
-    FD#fd{
-        known = purge_known(Known),
-        gossip_cd = GossipCD,
-        heartbeat = Heartbeat
+    {Dead, NewKnown} = purge_known(Known),
+    {Dead, FD#fd{
+             known = NewKnown,
+             gossip_cd = GossipCD,
+             heartbeat = Heartbeat
+            }
     }.
 
 get_neighbors (#fd{ known=Known }) ->
-    gb_trees:keys(Known).
+    {gb_trees:size(Known), gb_trees:keys(Known)}.
 
 get_gossip_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
     case GCD of
@@ -150,8 +161,7 @@ get_gossip_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
                 end,
             KnownList = gb_trees:to_list(Known),
             AllOther = lists:map(Unpack, lists:filter(IsAlive, KnownList)),
-            MySelf = {self(), HB},
-            [MySelf | AllOther];
+            [{self(), HB} | AllOther];
         _ ->
             none
     end.
