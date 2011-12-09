@@ -23,8 +23,7 @@
         {keeper, gfd_keeper},
         {keeper_args, {10,     % TFail
                        30,     % TCleanup
-                       5,      % TGossip
-                       0.1     % Broadcast probability
+                       5       % TGossip
                       }
         }
     ]}

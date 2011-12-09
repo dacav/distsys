@@ -41,8 +41,8 @@ add_peers (N, Module, PeerArg) when is_number(N) andalso N > 0 ->
 
 add_peers_pidonly (N, Module, PeerArg) when is_number(N)
                                             andalso N > 0 ->
-
-    lists:map(fun(T) -> element(1, T) end, add_peers(N, Module, PeerArg)).
+    lists:map(fun(T) -> element(1, T) end,
+              add_peers(N, Module, PeerArg)).
 
 enable_beacon (MilliSeconds) when MilliSeconds > 0 ->
     bcast:enable_beacon(MilliSeconds).

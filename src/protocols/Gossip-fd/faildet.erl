@@ -1,7 +1,7 @@
 -module(faildet).
 -author("Giovanni Simoni").
 -export([new/3, merge/2, period/1, get_neighbors/1,
-         get_gossip_message/1]).
+         get_gossip_message/1, insert_neighbor/2]).
 
 -record(fd, {
     known=gb_trees:empty(),
@@ -16,7 +16,7 @@
 }).
 
 -record(neighbor, {
-    heartbeat=0,
+    heartbeat=-1,
     ttl,            % Time to Live
     ttk             % Time to Keep
 }).
@@ -160,8 +160,20 @@ get_gossip_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
                     {Pid, Record#neighbor.heartbeat}
                 end,
             KnownList = gb_trees:to_list(Known),
-            AllOther = lists:map(Unpack, lists:filter(IsAlive, KnownList)),
+            AllOther = lists:map(Unpack,
+                                 lists:filter(IsAlive, KnownList)),
             [{self(), HB} | AllOther];
         _ ->
             none
     end.
+
+insert_neighbor (Pid, FD = #fd{}) ->
+    Record = #neighbor {
+        heartbeat = -1,
+        ttl = FD#fd.tfail,
+        ttk = FD#fd.tcleanup
+    },
+    Known = FD#fd.known,
+    FD#fd{
+        known = gb_trees:insert(Pid, Record, Known)
+    }.
