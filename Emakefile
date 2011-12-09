@@ -8,5 +8,5 @@
     [debug_info, {i, "include/"}, {outdir, "ebin/"}]}.
 {"src/test/*",
     [debug_info, {i, "include/"}, {outdir, "ebin/"}]}.
-%{"src/protocols/*/*",
-%    [debug_info, {i, "include/"}, {outdir, "ebin/"}]}.
+{"src/protocols/*/*",
+    [debug_info, {i, "include/"}, {outdir, "ebin/"}]}.

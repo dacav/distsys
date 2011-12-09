@@ -10,13 +10,23 @@
 
     {env, [
         % Default configuration, can be overriden by configuration file.
-        {faulty_prob, 0.15},        % 15% of nodes are faulty
-        {faulty_fail_prob, 0.5},    % Probability of crash for faulty node
+        {faulty_prob, 0.1},         % 15% of nodes are faulty
+        {faulty_fail_prob, 0.15},   % Probability of crash for faulty node
         {deliver_mindel, 500},      % Minimum deliver delay
         {deliver_maxdel, 1500},     % Maximum deliver delay
         {deliver_dist, {random, uniform, []}},  % Delay distribution
-        {keeper, pingpong_keeper},  % Nodes keeper
-        {keeper_args, 3}
+
+        % Pingpong testing application:
+        %{keeper, pingpong_keeper},  % Nodes keeper
+        %{keeper_args, 3}
+
+        {keeper, gfd_keeper},
+        {keeper_args, {10,     % TFail
+                       30,     % TCleanup
+                       5,      % TGossip
+                       0.1     % Broadcast probability
+                      }
+        }
     ]}
 
 ]}.
