@@ -2,7 +2,7 @@
 -author("Giovanni Simoni").
 
 -export([behaviour_info/1]).
--export([start_link/2]).
+-export([start_link/3]).
 
 -import(utils).
 -import(peer_ctrl).
@@ -49,12 +49,12 @@ loop (NodeModule, NodeData) ->
             peer_ctrl:notify_death(normal)
     end.
 
-start_link (Module, Args) ->
+start_link (Module, Seed, Args) ->
     % This will initialize the PRNG on peers (used for random
     % delay/kill during transmission).
     Init =
         fun () ->
-            random:seed(now()),
+            random:seed(Seed),
             bcast:subscribe(),
             ok
         end,

@@ -38,6 +38,11 @@ loop (Module, Arg) ->
     end.
 
 start_link (Module, Args) ->
-    Register = fun () -> erlang:register(keeper, self()), ok end,
-    utils:startup(fun erlang:spawn_link/1, Register, fun loop/2,
+    Init =
+        fun () ->
+                erlang:register(keeper, self()),
+                random:seed(now()),
+                ok % Remember how important is to return 'ok'...
+        end,
+    utils:startup(fun erlang:spawn_link/1, Init, fun loop/2,
                   Module, Args).
