@@ -6,13 +6,13 @@
 
 -import(log_serv).
 
-init (Father, GenInit, Loop, Ref, NodeModule, NodeArgs) ->
+init (Father, GenInit, Loop, Ref, Module, Arg) ->
     case GenInit() of
         ok ->
-            case apply(NodeModule, init, NodeArgs) of
+            case Module:init(Arg) of
                 {ok, NodeData} ->
                     erlang:send(Father, {Ref, ok}),
-                    Loop(NodeModule, NodeData);
+                    Loop(Module, NodeData);
                 {error, Reason} ->
                     erlang:send(Father, {Ref, error, Reason})
             end;
@@ -20,11 +20,11 @@ init (Father, GenInit, Loop, Ref, NodeModule, NodeArgs) ->
             erlang:send(Father, {Ref, error, Reason})
     end.
 
-startup (Spawner, GenInit, Loop, Module, Args) ->
+startup (Spawner, GenInit, Loop, Module, Arg) ->
     Me = self(),
     Ref0 = erlang:make_ref(),
     Pid = Spawner(fun () ->
-                      init(Me, GenInit, Loop, Ref0, Module, Args)
+                      init(Me, GenInit, Loop, Ref0, Module, Arg)
                   end),
     Ref1 = erlang:monitor(process, Pid),
     ToReturn =

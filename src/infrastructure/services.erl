@@ -32,7 +32,7 @@ init ([Keeper, KeeperArgs]) ->
     	{{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART},
          [Logger, BroadCast, PeersKeeper]
         }
-  	}.
+    }.
 
 start_link (Keeper, KeeperArgs) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE,

@@ -26,7 +26,7 @@ forge_seeds (N, PrevSeed) ->
     [{N, NextSeed} | forge_seeds(N - 1, NextSeed)].
 
 add_peers (N, Module, PeerArg) when is_number(N) andalso N > 0 ->
-    Specs = [build_spec(I, Module, Seed, [PeerArg])
+    Specs = [build_spec(I, Module, Seed, PeerArg)
              || {I, Seed} <- forge_seeds(N, random:seed())
             ],
     case supervisor:check_childspecs(Specs) of
@@ -41,8 +41,8 @@ add_peers (N, Module, PeerArg) when is_number(N) andalso N > 0 ->
 
 add_peers_pidonly (N, Module, PeerArg) when is_number(N)
                                             andalso N > 0 ->
-    lists:map(fun(T) -> element(1, T) end,
-              add_peers(N, Module, PeerArg)).
+
+    lists:map(fun(T) -> element(1, T) end, add_peers(N, Module, PeerArg)).
 
 enable_beacon (MilliSeconds) when MilliSeconds > 0 ->
     bcast:enable_beacon(MilliSeconds).

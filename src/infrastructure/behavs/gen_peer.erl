@@ -49,7 +49,7 @@ loop (NodeModule, NodeData) ->
             peer_ctrl:notify_death(normal)
     end.
 
-start_link (Module, Seed, Args) ->
+start_link (Module, Seed, Arg) ->
     % This will initialize the PRNG on peers (used for random
     % delay/kill during transmission).
     Init =
@@ -59,4 +59,4 @@ start_link (Module, Seed, Args) ->
             ok
         end,
     utils:startup(fun erlang:spawn_link/1, Init, fun loop/2,
-                  Module, Args).
+                  Module, Arg).

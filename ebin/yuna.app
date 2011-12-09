@@ -16,7 +16,7 @@
         {deliver_maxdel, 1500},     % Maximum deliver delay
         {deliver_dist, {random, uniform, []}},  % Delay distribution
         {keeper, pingpong_keeper},  % Nodes keeper
-        {keeper_args, [3]}
+        {keeper_args, 3}
     ]}
 
 ]}.

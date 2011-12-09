@@ -13,11 +13,7 @@
 
 init (NPeers) ->
     keeper_proto:enable_beacon(5000),
-    PeersRef =
-        case keeper_proto:add_peers(NPeers, pingpong_peer, [nil]) of
-            {ok, Lst} -> Lst;
-            _ -> throw(no_spawn)
-        end,
+    PeersRef = keeper_proto:add_peers(NPeers, pingpong_peer, nil),
     Peers = lists:map(fun (T) -> element(1, T) end, PeersRef),
     log_serv:log("Spawning ~p peers...\n> ~p", [NPeers, Peers]),
     {ok, #status{waiting_for=NPeers, spawned=Peers, npeers=NPeers}}.

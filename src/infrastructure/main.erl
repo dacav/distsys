@@ -10,7 +10,7 @@
 
 -import(conf).
 
-init ([Keeper, KeeperArgs]) ->
+init ({Keeper, KeeperArgs}) ->
     % Log service descriptor
     Services = {services,
         {services, start_link, [Keeper, KeeperArgs]},
@@ -26,8 +26,8 @@ init ([Keeper, KeeperArgs]) ->
     	{{one_for_one, ?MAX_RESTART, ?MAX_TIME_RESTART},
          [Peers, Services]
         }
-  	}.
+    }.
 
 start_link (Keeper, KeeperArgs) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [Keeper, KeeperArgs]).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, {Keeper, KeeperArgs}).
 
