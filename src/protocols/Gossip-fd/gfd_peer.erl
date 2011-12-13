@@ -7,65 +7,64 @@
 -import(peer_chan).
 -import(peer_ctrl).
 
+-import(consensus).
+
 -record(status, {
     fd,
-    bcastprob
+    cons=nil
 }).
 
-init ({TFail, TCleanup, TGossip}) ->
+init (FDParams = {_,_,_}) ->
     Status = #status{
-        fd = faildet:new(TFail, TCleanup, TGossip)
+        fd = faildet:init(FDParams)
     },
     peer_ctrl:notify_spawn(),
     {ok, Status}.
 
-handle_message (_From, {gossip_faildet, KnownList}, Status) ->
-    {Born, NewFD} = faildet:merge(KnownList, Status#status.fd),
-    lists:foreach(fun peer_chan:greet/1, Born),
-    NewStatus = Status#status {
-        fd = NewFD
-    },
-    {ok, NewStatus}.
+% ------------------------------------------------------------------------
+% Messages for Failure Detector logic
+% ------------------------------------------------------------------------
 
-handle_introduction (_From, Pid, Status = #status{ fd=FD }) ->
-    NewStatus = Status#status{
-        fd=faildet:insert_neighbor(Pid, FD)
-    },
-    {ok, NewStatus}.
+handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
+    case faildet:handle_message(From, Msg, FD) of
+        {ok, NewFD} ->
+            NewStatus = Status#status {
+                fd=NewFD
+            },
+            {ok, NewStatus};
+        Error -> Error
+    end;
+handle_message (From, {cons, Msg}, Status) ->
+    log_serv:log("Message from ~p for consensus: ~p", [From, Msg]),
+    {ok, Status}.
 
-handle_info (_Noise, _Prvt) ->
-    {ok, nil}.
-
-handle_beacon (Status = #status{ fd=FD }) ->
-    {Dead, NewFD} = faildet:period(FD),
-    case Dead of
-        [] -> ok;
-        _ -> log_serv:log("Dead neigbors: ~p", [Dead])
-    end,
-    case faildet:get_gossip_message(FD) of
-        none ->
-            ok;
-        Msg ->
-            Neighbors = faildet:get_neighbors(FD),
-            log_serv:log("Propagation: ~p", [element(2, Neighbors)]),
-            send_random_peer(Neighbors, Msg)
-    end,
-    NewStatus = Status#status{
-        fd = NewFD
-    },
-    {ok, NewStatus}.
-
-% -----------------------------------------------------------------------
-% Utility functions
-% -----------------------------------------------------------------------
-
-send_random_peer (Peers, Msg) ->
-    case Peers of
-        {0, _} ->
-            ok;
-        {NPids, Pids} ->
-            gossip_send(lists:nth(random:uniform(NPids), Pids), Msg)
+handle_introduction (From, Pid, Status = #status{ fd=FD }) ->
+    case faildet:handle_introduction(From, Pid, FD) of
+        {ok, NewFD} ->
+            NewStatus = Status#status {
+                fd=NewFD
+            },
+            {ok, NewStatus};
+        Error -> Error
     end.
 
-gossip_send (To, Msg) ->
-    peer_chan:send(To, {gossip_faildet, Msg}).
+handle_info (Info, Status = #status{ fd=FD }) ->
+    case faildet:handle_info(Info, FD) of
+        {ok, NewFD} ->
+            NewStatus = Status#status {
+                fd=NewFD
+            },
+            {ok, NewStatus};
+        Error -> Error
+    end.
+
+handle_beacon (Status = #status{ fd=FD }) ->
+    case faildet:handle_beacon(FD) of
+        {ok, NewFD} ->
+            % HERE PROFIT
+            NewStatus = Status#status {
+                 fd=NewFD
+            },
+            {ok, NewStatus};
+        Error -> Error
+    end.

@@ -1,7 +1,15 @@
 -module(faildet).
 -author("Giovanni Simoni").
--export([new/3, merge/2, period/1, get_neighbors/1,
-         get_gossip_message/1, insert_neighbor/2]).
+
+-behavior(gen_peer).
+% API for Failure Detector update system, behaving like a peer
+-export([init/1, handle_message/3, handle_introduction/3,
+         handle_info/2, handle_beacon/1]).
+
+% API for Failure Detector data reading.
+-export([get_neighbors/1]).
+
+-import(faildet_api).
 
 -record(fd, {
     known=gb_trees:empty(),
@@ -21,7 +29,11 @@
     ttk             % Time to Keep
 }).
 
-new (TFail, TCleanup, TGossip)
+% ------------------------------------------------------------------------
+% gen_peer logic
+% ------------------------------------------------------------------------
+
+init ({TFail, TCleanup, TGossip})
         when    is_number(TFail)
         andalso is_number(TCleanup)
         andalso is_number(TGossip)
@@ -35,6 +47,31 @@ new (TFail, TCleanup, TGossip)
         tgossip = TGossip,
         gossip_cd = TGossip
     }.
+
+handle_message (_From, {known_list, KnownList}, FD = #fd{}) ->
+    {Born, NewFD} = merge(KnownList, FD),
+    lists:foreach(fun peer_chan:greet/1, Born),
+    {ok, NewFD}.
+
+handle_introduction (_From, Pid, FD = #fd{}) ->
+    {ok, insert_neighbor(Pid, FD)}.
+
+handle_info (_, S) ->
+    {ok, S}.
+
+handle_beacon (FD=#fd{}) ->
+    {_Dead, NewFD} = period(FD),
+    case forge_message(FD) of
+        none ->
+            ok;
+        KnownList ->
+            faildet_api:send_known_list(get_neighbors(FD), KnownList)
+    end,
+    {ok, NewFD}.
+
+% ------------------------------------------------------------------------
+% Failure detector internal logic
+% ------------------------------------------------------------------------
 
 update_pid (Pid, Known, ToDo, Update, New) ->
     case gb_trees:lookup(Pid, Known) of
@@ -148,7 +185,7 @@ period (FD = #fd{ known = Known, heartbeat = HB }) ->
 get_neighbors (#fd{ known=Known }) ->
     {gb_trees:size(Known), gb_trees:keys(Known)}.
 
-get_gossip_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
+forge_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
     case GCD of
         expired ->
             IsAlive =
