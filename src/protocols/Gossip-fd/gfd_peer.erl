@@ -8,6 +8,7 @@
 -import(peer_ctrl).
 
 -import(consensus).
+-import(faildet).
 
 -record(status, {
     fd,
@@ -34,37 +35,82 @@ handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
             {ok, NewStatus};
         Error -> Error
     end;
-handle_message (From, {cons, Msg}, Status) ->
-    log_serv:log("Message from ~p for consensus: ~p", [From, Msg]),
+handle_message (From, {cons, Msg}, Status = #status{ cons=Cons }) ->
+    try
+        NewCons =
+            case Msg of
+                {init, IdAssignment} ->
+                    consensus:init(IdAssignment);
+                _ ->
+                    case consensus:handle_message(From, Msg, Cons) of
+                        {ok, UpdCons} -> UpdCons;
+                        Error -> throw(Error)
+                    end
+            end,
+        Status#status{
+            cons=NewCons
+        }
+    of
+        S -> {ok, S}
+    catch
+        throw:E -> E
+    end.
+
+handle_introduction (From, Pid, Status = #status{ fd=FD, cons=Cons }) ->
+    try
+        NewFD =
+            case faildet:handle_introduction(From, Pid, FD) of
+                {ok, FD0} -> FD0;
+                E0 -> throw(E0)
+            end,
+        NewCons =
+            case faildet:get_last_born(NewFD) of
+                [] -> Cons;
+                Born ->
+                    NAlive = element(1, faildet:get_neighbors(NewFD)),
+                    Msg = {born, Born, NAlive},
+                    case consensus:handle_message(faildet, Msg, Cons) of
+                        {ok, Cons0} -> Cons0;
+                        E1 -> throw(E1)
+                    end
+            end,
+        Status#status {
+            fd=NewFD,
+            cons=NewCons
+        }
+    of
+        S -> {ok, S}
+    catch
+        throw:E -> E
+    end.
+
+handle_info (_Info, Status = #status{}) ->
     {ok, Status}.
 
-handle_introduction (From, Pid, Status = #status{ fd=FD }) ->
-    case faildet:handle_introduction(From, Pid, FD) of
-        {ok, NewFD} ->
-            NewStatus = Status#status {
-                fd=NewFD
-            },
-            {ok, NewStatus};
-        Error -> Error
-    end.
-
-handle_info (Info, Status = #status{ fd=FD }) ->
-    case faildet:handle_info(Info, FD) of
-        {ok, NewFD} ->
-            NewStatus = Status#status {
-                fd=NewFD
-            },
-            {ok, NewStatus};
-        Error -> Error
-    end.
-
-handle_beacon (Status = #status{ fd=FD }) ->
-    case faildet:handle_beacon(FD) of
-        {ok, NewFD} ->
-            % HERE PROFIT
-            NewStatus = Status#status {
-                 fd=NewFD
-            },
-            {ok, NewStatus};
-        Error -> Error
+handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
+    try
+        NewFD =
+            case faildet:handle_beacon(FD) of
+                {ok, FD0} -> FD0;
+                E0 -> throw(E0)
+            end,
+        NewCons =
+            case faildet:get_last_dead(NewFD) of
+                [] -> Cons;
+                Dead ->
+                    NAlive = element(1, faildet:get_neighbors(NewFD)),
+                    Msg = {dead, Dead, NAlive},
+                    case consensus:handle_message(faildet, Msg, Cons) of
+                        {ok, Cons1} -> Cons1;
+                        E1 -> throw(E1)
+                    end
+            end,
+        Status#status {
+            fd=NewFD,
+            cons=NewCons
+        }
+    of
+        S -> {ok, S}
+    catch
+        thorw:E -> E
     end.

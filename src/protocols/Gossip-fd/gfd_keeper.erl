@@ -131,8 +131,9 @@ prepare_protocol (Status = #status{ tbeacon=TBeacon,
 
 assign_numbers (#status{ alive=Alive }) ->
     N = gb_sets:size(Alive),
-    Assignment = lists:zip(gb_sets:to_list(Alive), lists:seq(1, N)),
-    [ cons_inject(Pid, {round_info, I, N}) || {Pid, I} <- Assignment ].
+    Assignment = lists:zip(lists:seq(1, N),
+                           gb_sets:to_list(Alive)),
+    gfd_api:cons_inject({init, Assignment}).
 
 cons_inject (To, Msg) ->
     keeper_inject:send(To, {cons, Msg}).

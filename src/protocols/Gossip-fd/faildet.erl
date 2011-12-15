@@ -7,7 +7,7 @@
          handle_info/2, handle_beacon/1]).
 
 % API for Failure Detector data reading.
--export([get_neighbors/1]).
+-export([get_neighbors/1, get_last_born/1, get_last_dead/1]).
 
 -import(faildet_api).
 
@@ -20,7 +20,10 @@
     tgossip,
 
     heartbeat = 0,  % My own heartbeat
-    gossip_cd       % Countdown to gossip time
+    gossip_cd,      % Countdown to gossip time
+
+    last_born,      % List of recently appeared peers
+    last_dead       % List of recently disappeared peers
 }).
 
 -record(neighbor, {
@@ -49,8 +52,8 @@ init ({TFail, TCleanup, TGossip})
     }.
 
 handle_message (_From, {known_list, KnownList}, FD = #fd{}) ->
-    {Born, NewFD} = merge(KnownList, FD),
-    lists:foreach(fun peer_chan:greet/1, Born),
+    NewFD = merge(KnownList, FD),
+    lists:foreach(fun peer_chan:greet/1, NewFD#fd.last_born),
     {ok, NewFD}.
 
 handle_introduction (_From, Pid, FD = #fd{}) ->
@@ -60,7 +63,7 @@ handle_info (_, S) ->
     {ok, S}.
 
 handle_beacon (FD=#fd{}) ->
-    {_Dead, NewFD} = period(FD),
+    NewFD = period(FD),
     case forge_message(FD) of
         none ->
             ok;
@@ -118,9 +121,9 @@ merge (KnownList, FD) ->
         end,
     {Born, NewKnown} = lists:foldl(Update, {[], FD#fd.known},
                                    KnownList),
-    {Born, FD#fd{
-               known = NewKnown
-           }
+    FD#fd{
+        known = NewKnown,
+        last_born = Born
     }.
 
 purge_iteration (Known, Dead, Action, Update, Iterator) ->
@@ -175,11 +178,11 @@ period (FD = #fd{ known = Known, heartbeat = HB }) ->
             N -> {N - 1, HB}
         end,
     {Dead, NewKnown} = purge_known(Known),
-    {Dead, FD#fd{
-             known = NewKnown,
-             gossip_cd = GossipCD,
-             heartbeat = Heartbeat
-            }
+    FD#fd{
+        known = NewKnown,
+        gossip_cd = GossipCD,
+        heartbeat = Heartbeat,
+        last_dead = Dead
     }.
 
 get_neighbors (#fd{ known=Known }) ->
@@ -204,13 +207,8 @@ forge_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
             none
     end.
 
-insert_neighbor (Pid, FD = #fd{}) ->
-    Record = #neighbor {
-        heartbeat = -1,
-        ttl = FD#fd.tfail,
-        ttk = FD#fd.tcleanup
-    },
-    Known = FD#fd.known,
-    FD#fd{
-        known = gb_trees:enter(Pid, Record, Known)
-    }.
+insert_neighbor (Pid, #fd{ known=Known, tfail=TFail, tcleanup=TCleanup}) ->
+    element(2, update(Pid, -1, Known, TFail, TCleanup)).
+
+get_last_born (#fd{ last_born=LB }) -> LB.
+get_last_dead (#fd{ last_dead=LD }) -> LD.
