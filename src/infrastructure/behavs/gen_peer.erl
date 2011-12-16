@@ -41,12 +41,14 @@ loop (NodeModule, NodeData) ->
         {ok, NodeUpdatedData} ->
             loop(NodeModule, NodeUpdatedData);
         {error, Reason} ->
-            peer_ctrl:notify_death(Reason);
+            peer_ctrl:notify_term(Reason);
         stop ->
-            peer_ctrl:notify_death(normal);
+            peer_ctrl:notify_term(normal);
         {stop, Result} ->
             peer_ctrl:notify_result(Result),
-            peer_ctrl:notify_death(normal)
+            peer_ctrl:notify_term(normal);
+        Unknown ->
+            throw({whatis, Unknown})
     end.
 
 start_link (Module, Seed, Arg) ->
