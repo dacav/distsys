@@ -1,6 +1,6 @@
 -module(gfd_api).
 -author("Giovanni Simoni").
--export([faildet_send/2, cons_send/2]).
+-export([faildet_send/2, cons_send/2, cons_decide/1, cons_bcast/1]).
 
 -import(peer_chan).
 -import(peer_ctrl).
@@ -16,5 +16,5 @@ cons_bcast (Msg) ->
 
 cons_decide (Val) ->
     Msg = {decide, Val},
-    peer_chan:bcast_send(Msg),
+    peer_chan:bcast_send({cons, Msg}),
     peer_ctrl:notify_result(Msg).

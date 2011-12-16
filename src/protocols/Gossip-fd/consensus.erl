@@ -48,11 +48,13 @@
 %    is strictly smaller than trunc(N/2), so we also need to keep track of
 %    changes in the number of nodes (information coming from the Failure
 %    Detector.
+%
+% TODO Complete
 
 init (IdAssignment) ->
-    #cons{
-        id_assign = gb_trees:from_list(IdAssignment)  % [{Id, Pid} ...]
-    }.
+    Tree = lists:foldl(fun ({I,P}, T) -> gb_trees:insert(I, P, T) end,
+                       gb_trees:empty(), IdAssignment),
+    #cons{ id_assign = Tree }.
 
 handle_message (keeper, start, Cons = #cons{ phase=0 }) ->
     run_round(Cons);
@@ -74,24 +76,34 @@ handle_message (faildet, {dead, DeadList, NAlive}, Cons = #cons{}) ->
         % We are in phase 1 and the coordinator is dead. Go to phase 2
         % and set the estimate to '?'.
         {1, true} ->
-            run_phase2(NewCons#cons{ est='?' });
+            log_serv:log("Coordinator is dead"),
+            run_phase2(NewCons#cons{ est_from_c='?' });
         {2, _} ->
+            log_serv:log("Trying agreement"),
             agreement(NewCons);
-        _ -> {ok, NewCons}
+        _ ->
+            {ok, NewCons}
     end;
 
 handle_message (_From, {est_c, Est_c}, Cons = #cons{ phase=1 }) ->
     % The massage from current coordinator (either direct or propagated by
     % other nodes) moves us to phase 2
+    log_serv:log("Got estimation: ~p", [Est_c]),
     run_phase2(Cons#cons{ est_from_c=Est_c });
 
 handle_message (From, {phase2, E},
-                Cons = #cons{ phase=2, rec=Rec, prop=Prop }) ->
-    NewCons0 = Cons#cons {
-        rec=ordsets:add_element(E, Rec),
-        prop=gb_sets:add_element(From, Prop)
-    },
-    agreement(NewCons0);
+                Cons = #cons{ phase=Phase, rec=Rec, prop=Prop }) ->
+    case Phase of
+        2 ->
+            NewCons0 = Cons#cons {
+                rec=ordsets:add_element(E, Rec),
+                prop=gb_sets:add_element(From, Prop)
+            },
+            agreement(NewCons0);
+        _ ->
+            log_serv:log("Got a 'phase=2' message, discarded"),
+            {ok, Cons}
+    end;
 
 handle_message (From, {decide, Value}, #cons{}) ->
     case self() of
@@ -100,17 +112,13 @@ handle_message (From, {decide, Value}, #cons{}) ->
         _ ->
             gfd_api:cons_decide(Value),
             stop
-    end;
-
-handle_message (_From, Message, #cons{ phase=Phase }) ->
-    % Any other case is erroneous
-    report_misbehavior(handle_message, Phase, Message).
+    end.
 
 handle_info (_Info, Cons = #cons{}) -> {ok, Cons}.
 handle_beacon (Cons = #cons{}) -> {ok, Cons}.
 handle_introduction (_From, _Pid, Cons) -> {ok, Cons}.
 
-decide () ->
+guess () ->
     % Decide true or false with same probability.
     random:uniform() < 0.5.
 
@@ -119,21 +127,15 @@ is_coordinator_dead (Cons, DeadList) ->
     case get_coordinator(Cons) of
         {_, Self} ->
             false;
-        {_, CoordPid} ->       
+        {_, CoordPid} ->
             IsCoord = fun (P) -> P =:= CoordPid end,
             lists:any(IsCoord, DeadList)
     end.
 
 get_coordinator (#cons{ id_assign=Assignment, round=Round }) ->
     N = gb_trees:size(Assignment),
-    Id = Round rem N,
-    {Id, gb_trees:get(Id)}.
-
-% For debugging purposes, If everything goes well this should never be
-% called.
-report_misbehavior (Callback, Phase, Data) ->
-    log_serv:log("CONSENSUS ERROR: Cbk=~p Phs=~ Data=~p",
-                 [Callback, Phase, Data]).
+    Id = (Round rem N) + 1,
+    {Id, gb_trees:get(Id, Assignment)}.
 
 run_phase2 (Cons = #cons{ est_from_c=E }) ->
     gfd_api:cons_bcast({phase2, E}),
@@ -144,27 +146,32 @@ run_phase2 (Cons = #cons{ est_from_c=E }) ->
     },
     {ok, NewCons}.
 
-agreement (Cons=#cons{ rec=Rec, prop=Prop, nalive=N }) ->
-    GetVal = fun () -> ordset:fold(fun (X,_) -> X end, ok, Rec) end,
+agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
+    GetVal = fun () -> ordsets:fold(fun (X,_) -> X end, ok, Rec) end,
     case gb_sets:size(Prop) of
         M when M < trunc(N/2) ->
+            log_serv:log("I heard ~p nodes, waiting for other ~p (N=~p)",
+                         [M, trunc(N/2), N]),
             {ok, Cons};
         _ ->
-            Size = ordset:size(Rec),
-            Doubt = ordset:is_element('?', Rec),
-            case {Size, Doubt} of
-                {1, false} -> % Rec = {v}
+            log_serv:log("Rec=~p", [Rec]),
+            case Rec of
+                [_] -> % Rec = {v}
                     % Decide
+                    log_serv:log("Deciding"),
                     gfd_api:cons_decide(GetVal()),
                     stop;
-                {1, true} -> % Rec = {?}
+                ['?'] -> % Rec = {?}
+                    log_serv:log("Next round"),
                     run_next_round(Cons);
-                {2, true} -> % Rec = {v, ?}
+                ['?', _] -> % Rec = {v, ?}
+                    log_serv:log("Next round with value"),
                     NewCons = Cons#cons {
                         est=GetVal()
                     },
                     run_next_round(NewCons);
                 _ ->
+                    log_serv:log("Y U No Agree? Rec=~p", [Rec]),
                     {error, yuna}
             end
     end.
@@ -184,16 +191,19 @@ run_round (Cons = #cons{ est=Est }) ->
     % decision value is broadcasted. If the value has not been estimated
     % yet, it's created randomly.
     Self = self(),
-    NewEst = 
+    NewEst =
         case get_coordinator(Cons) of
-            Self ->
+            {_, Self} ->
                 Est_c =
                     case Est of
-                        '?' -> decide();
+                        '?' -> guess();
                         _ -> Est
                     end,
+                log_serv:log("Coordinator started with est=~p",
+                             [Est_c]),
                 gfd_api:cons_bcast({est_c, Est_c});
-            _ -> 
+            {I, P} ->
+                log_serv:log("Coordinator is ~p (~p)", [P, I]),
                 Est
         end,
     NewCons = Cons#cons {

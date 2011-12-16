@@ -56,6 +56,24 @@ handle_message (From, {cons, Msg}, Status = #status{ cons=Cons }) ->
         throw:E -> E
     end.
 
+handle_introduction (From, Pid, Status = #status{ fd=FD, cons=nil }) ->
+    % Used during the very first protocol phase, when the `cons` variable
+    % is still to be built (before id assignment).
+    try
+        NewFD =
+            case faildet:handle_introduction(From, Pid, FD) of
+                {ok, FD0} -> FD0;
+                E0 -> throw(E0)
+            end,
+        Status#status {
+            fd=NewFD
+        }
+    of
+        S -> {ok, S}
+    catch
+        throw:E -> E
+    end;
+
 handle_introduction (From, Pid, Status = #status{ fd=FD, cons=Cons }) ->
     try
         NewFD =
@@ -65,7 +83,7 @@ handle_introduction (From, Pid, Status = #status{ fd=FD, cons=Cons }) ->
             end,
         NewCons =
             case faildet:get_last_born(NewFD) of
-                [] -> Cons;
+                nil -> Cons;
                 Born ->
                     NAlive = element(1, faildet:get_neighbors(NewFD)),
                     Msg = {born, Born, NAlive},
@@ -98,6 +116,7 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
             case faildet:get_last_dead(NewFD) of
                 [] -> Cons;
                 Dead ->
+                    log_serv:log("Dead guys: ~p", [Dead]),
                     NAlive = element(1, faildet:get_neighbors(NewFD)),
                     Msg = {dead, Dead, NAlive},
                     case consensus:handle_message(faildet, Msg, Cons) of

@@ -11,7 +11,8 @@
 
 -record(status, {
     alive=gb_sets:new(),  % Set of spawned nodes
-    result=result:new(),
+    result=result:new(),  % Results from node (stats)
+    stop=false,           % Termination in progress
 
     % Initialization parameters, commented later
     npeers,
@@ -58,14 +59,14 @@ handle_spawn_notify (Pid, Status = #status{ alive=Alive, npeers=N }) ->
         N ->
             % Upon all nodes have been correctly spawned, we start thexs
             % protocol
-            log_serv:log("All nodes started. Enabling protocol"),
             prepare_protocol(NewStatus);
         _ -> ok
     end,
     {ok, NewStatus}.
 
-handle_result_notify (Pid, Value, Status = #status{ result=Result }) ->
-    log_serv:log("Process ~p decided: ~p\n", [Pid, Value]),
+handle_result_notify (Pid, {decide, Value},
+                      Status = #status{ result=Result }) ->
+    log_serv:log("Process ~p decided: ~p", [Pid, Value]),
     case result:add(Pid, Value, Result) of
         {error, _} ->
             {error, double_decision};
@@ -73,16 +74,20 @@ handle_result_notify (Pid, Value, Status = #status{ result=Result }) ->
             NewStatus = Status#status{
                 result = NewResult
             },
-            check_result(NewStatus)            
+            check_result(NewStatus)
     end.
 
-handle_term_notify (Pid, _Ref, Reason, Status = #status{ alive=Alive} ) ->
+handle_term_notify (Pid, _Ref, Reason,
+                    Status = #status{ alive=Alive, stop=Stop } ) ->
     log_serv:log("Dead: ~p (~p), ~p left",
                  [Pid, Reason, gb_sets:size(Alive) - 1]),
     NewStatus = Status#status {
-        alive=gb_sets:delete(Pid, Alive)
+        alive=gb_sets:delete_any(Pid, Alive)
     },
-    check_result(NewStatus).
+    case Stop of
+        false -> check_result(NewStatus);
+        true -> check_term(NewStatus)
+    end.
 
 handle_info (ready, Status) ->
     log_serv:log("Waited enough. Starting first round"),
@@ -107,12 +112,22 @@ check_result (Status = #status{ alive=Alive, result=Result }) ->
     case result:count(Result) of
         NAlive ->
             stop_protocol(Status),
-            log_serv:log("Consensus (should be) reached. Stats:"),
+            log_serv:log("Consensus (should has been) reached. Stats:"),
             lists:foreach(LogResult, result:stats(Result)),
             log_serv:log("End of statistics"),
-            stop;
+            log_serv:log("Killing remaining processes..."),
+            killall(gb_sets:to_list(Alive)),
+            {ok, Status=#status{ stop=true }};
         N when N < NAlive ->
-            {ok, Status}
+            {ok, Status};
+        Any ->
+            throw(io_lib:format("Nalive=~p, N=~p", [NAlive, Any]))
+    end.
+
+check_term (Status = #status{ stop=true, alive=Alive }) ->
+    case gb_sets:size(Alive) of
+        0 -> stop;
+        _ -> {ok, Status}
     end.
 
 stop_protocol (Status) ->
@@ -125,15 +140,20 @@ start_protocol (Status) ->
 
 prepare_protocol (Status = #status{ tbeacon=TBeacon,
                                     beaconwait=BeaconWait }) ->
+    log_serv:log("Preparing protocol..."),
     assign_numbers(Status),
     keeper_proto:enable_beacon(TBeacon),
+    log_serv:log("Nodes started. Letting them know each other..."),
     timer:send_after(BeaconWait * TBeacon, self(), ready).
 
 assign_numbers (#status{ alive=Alive }) ->
     N = gb_sets:size(Alive),
     Assignment = lists:zip(lists:seq(1, N),
                            gb_sets:to_list(Alive)),
-    gfd_api:cons_inject({init, Assignment}).
+    cons_inject({init, Assignment}).
 
-cons_inject (To, Msg) ->
-    keeper_inject:send(To, {cons, Msg}).
+cons_inject (Msg) ->
+    keeper_inject:bcast({cons, Msg}).
+
+killall (Alive) ->
+    lists:foreach(fun (P) -> exit(P, kill) end, Alive).

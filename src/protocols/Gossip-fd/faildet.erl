@@ -19,11 +19,11 @@
     tcleanup,
     tgossip,
 
-    heartbeat = 0,  % My own heartbeat
-    gossip_cd,      % Countdown to gossip time
+    heartbeat = 0,      % My own heartbeat
+    gossip_cd,          % Countdown to gossip time
 
-    last_born,      % List of recently appeared peers
-    last_dead       % List of recently disappeared peers
+    last_born = [],     % List of recently appeared peers
+    last_dead = []      % List of recently disappeared peers
 }).
 
 -record(neighbor, {
@@ -207,8 +207,11 @@ forge_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
             none
     end.
 
-insert_neighbor (Pid, #fd{ known=Known, tfail=TFail, tcleanup=TCleanup}) ->
-    element(2, update(Pid, -1, Known, TFail, TCleanup)).
+insert_neighbor (Pid, FD = #fd{ known=Known, tfail=TFail,
+                                tcleanup=TCleanup}) ->
+    FD#fd{
+        known=element(2, update(Pid, -1, Known, TFail, TCleanup))
+    }.
 
 get_last_born (#fd{ last_born=LB }) -> LB.
 get_last_dead (#fd{ last_dead=LD }) -> LD.
