@@ -116,7 +116,6 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
             case faildet:get_last_dead(NewFD) of
                 [] -> Cons;
                 Dead ->
-                    log_serv:log("Dead guys: ~p", [Dead]),
                     NAlive = element(1, faildet:get_neighbors(NewFD)),
                     Msg = {dead, Dead, NAlive},
                     case consensus:handle_message(faildet, Msg, Cons) of

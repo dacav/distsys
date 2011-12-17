@@ -123,7 +123,7 @@ handle_info (_Info, Cons = #cons{}) -> {ok, Cons}.
 handle_beacon (Cons = #cons{}) -> {ok, Cons}.
 handle_introduction (_From, _Pid, Cons) -> {ok, Cons}.
 
-guess () ->
+random_estimate () ->
     % Decide true or false with same probability.
     random:uniform() < 0.5.
 
@@ -152,7 +152,6 @@ run_phase2 (Cons = #cons{ est_from_c=E }) ->
     {ok, NewCons}.
 
 agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
-    GetVal = fun () -> ordsets:fold(fun (X,_) -> X end, ok, Rec) end,
     case gb_sets:size(Prop) of
         M when M < trunc(N/2) ->
             log_serv:log("I heard ~p nodes, waiting for other ~p (N=~p)",
@@ -161,20 +160,17 @@ agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
         _ ->
             log_serv:log("Rec=~p", [Rec]),
             case Rec of
-                [_] -> % Rec = {v}
-                    % Decide
-                    log_serv:log("Deciding"),
-                    gfd_api:cons_decide(GetVal()),
-                    {ok, Cons#cons { decided=true }};
-                ['?'] -> % Rec = {?}
+                ['?'] ->
                     log_serv:log("Next round"),
                     run_next_round(Cons);
-                ['?', _] -> % Rec = {v, ?}
+                [V] when V =/= '?' ->
+                    % Decide
+                    log_serv:log("Deciding"),
+                    gfd_api:cons_decide(V),
+                    {ok, Cons#cons{ decided=true }};
+                ['?', V] ->
                     log_serv:log("Next round with value"),
-                    NewCons = Cons#cons {
-                        est=GetVal()
-                    },
-                    run_next_round(NewCons);
+                    run_next_round(Cons#cons{ est=V });
                 _ ->
                     log_serv:log("Y U No Agree? Rec=~p", [Rec]),
                     {error, yuna}
@@ -201,7 +197,7 @@ run_round (Cons = #cons{ est=Est }) ->
             {_, Self} ->
                 Est_c =
                     case Est of
-                        '?' -> guess();
+                        '?' -> random_estimate();
                         _ -> Est
                     end,
                 log_serv:log("Coordinator started with est=~p",
