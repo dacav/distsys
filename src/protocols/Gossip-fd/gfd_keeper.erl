@@ -103,25 +103,28 @@ introduce_random (One, AllOther) ->
     end.
 
 check_result (Status = #status{ alive=Alive, result=Result }) ->
-    LogResult =
-        fun ({Val, Count}) ->
-                log_serv:log("\tValue ~p has been selected by ~p nodes",
-                             [Val, Count])
-        end,
-    NAlive = gb_sets:size(Alive),
-    case result:count(Result) of
+    case gb_sets:size(Alive) of
+        0 ->
+            log_serv:log("All nodes are dead!"),
+            stop;
         NAlive ->
-            stop_protocol(Status),
-            log_serv:log("Consensus (should has been) reached. Stats:"),
-            lists:foreach(LogResult, result:stats(Result)),
-            log_serv:log("End of statistics"),
-            log_serv:log("Killing remaining processes..."),
-            killall(gb_sets:to_list(Alive)),
-            {ok, Status=#status{ stop=true }};
-        N when N < NAlive ->
-            {ok, Status};
-        Any ->
-            throw(io_lib:format("Nalive=~p, N=~p", [NAlive, Any]))
+            LogResult =
+                fun ({Val, Count}) ->
+                    log_serv:log("\tValue ~p has been selected by ~p nodes",
+                                 [Val, Count])
+                end,
+            case result:count(Result) of
+                NAlive ->
+                    stop_protocol(Status),
+                    log_serv:log("Consensus (should has been) reached:"),
+                    lists:foreach(LogResult, result:stats(Result)),
+                    log_serv:log("Killing remaining processes..."),
+                    killall(gb_sets:to_list(Alive)),
+                    log_serv:log("Terminating."),
+                    stop;
+                N when N < NAlive ->
+                    {ok, Status}
+            end
     end.
 
 check_term (Status = #status{ stop=true, alive=Alive }) ->

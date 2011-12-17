@@ -15,8 +15,9 @@
     est_from_c=nil,        % Estimation from coordinator (propagated);
     nalive,                % Currently alive nodes (according to FD);
     rec,                   % Set of results aggregated during phase2;
-    prop                   % Nodes who propagated the aggregated result
+    prop,                  % Nodes who propagated the aggregated result
                            % during phase 2.
+    decided=false
 }).
 
 % PHASES OF THE ALGORITHM
@@ -55,6 +56,10 @@ init (IdAssignment) ->
     Tree = lists:foldl(fun ({I,P}, T) -> gb_trees:insert(I, P, T) end,
                        gb_trees:empty(), IdAssignment),
     #cons{ id_assign = Tree }.
+
+handle_message (_From, _Msg, Cons = #cons{ decided=true }) ->
+    % Ignoring everything, I've decided.
+    {ok, Cons};
 
 handle_message (keeper, start, Cons = #cons{ phase=0 }) ->
     run_round(Cons);
@@ -105,13 +110,13 @@ handle_message (From, {phase2, E},
             {ok, Cons}
     end;
 
-handle_message (From, {decide, Value}, #cons{}) ->
+handle_message (From, {decide, Value}, Cons = #cons{}) ->
     case self() of
         From ->
             {error, 'wtf?'};   % This should never happpen!
         _ ->
             gfd_api:cons_decide(Value),
-            stop
+            {ok, Cons#cons{ decided=true }}
     end.
 
 handle_info (_Info, Cons = #cons{}) -> {ok, Cons}.
@@ -160,7 +165,7 @@ agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
                     % Decide
                     log_serv:log("Deciding"),
                     gfd_api:cons_decide(GetVal()),
-                    stop;
+                    {ok, Cons#cons { decided=true }};
                 ['?'] -> % Rec = {?}
                     log_serv:log("Next round"),
                     run_next_round(Cons);
