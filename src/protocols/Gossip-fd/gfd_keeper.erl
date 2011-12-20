@@ -54,7 +54,9 @@ handle_spawn_notify (Pid, Status = #status{ alive=Alive, npeers=N }) ->
     NewStatus = Status#status{
         alive = NewAlive
     },
-    case gb_sets:size(NewAlive) of
+    NAlive = gb_sets:size(NewAlive),
+    log_serv:node_count(NAlive),
+    case NAlive of
         N ->
             % Upon all nodes have been correctly spawned, we start thexs
             % protocol
@@ -66,11 +68,11 @@ handle_spawn_notify (Pid, Status = #status{ alive=Alive, npeers=N }) ->
 
 handle_result_notify (Pid, {decide, Value},
                       Status = #status{ result=Result }) ->
-    log_serv:log("Process ~p decided: ~p", [Pid, Value]),
     case result:add(Pid, Value, Result) of
         {error, _} ->
             {error, double_decision};
         {ok, NewResult} ->
+            log_serv:decision_count(result:count(NewResult)),
             NewStatus = Status#status{
                 result = NewResult
             },
@@ -79,8 +81,8 @@ handle_result_notify (Pid, {decide, Value},
 
 handle_term_notify (Pid, _Ref, Reason,
                     Status = #status{ alive=Alive, stop=Stop } ) ->
-    log_serv:log("Dead: ~p (~p), ~p left",
-                 [Pid, Reason, gb_sets:size(Alive) - 1]),
+    log_serv:log("Dead ~p: ~p", [Pid, Reason]),
+    log_serv:node_count(gb_sets:size(Alive) - 1),
     NewStatus = Status#status {
         alive=gb_sets:delete_any(Pid, Alive)
     },

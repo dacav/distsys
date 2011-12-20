@@ -87,6 +87,7 @@ handle_introduction (From, Pid, Status = #status{ fd=FD, cons=Cons }) ->
                 nil -> Cons;
                 Born ->
                     NAlive = element(1, faildet:get_neighbors(NewFD)),
+                    log_serv:est_node_count(NAlive),
                     Msg = {born, Born, NAlive},
                     case consensus:handle_message(faildet, Msg, Cons) of
                         {ok, Cons0} -> Cons0;
@@ -118,6 +119,7 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
                 [] -> Cons;
                 Dead ->
                     NAlive = element(1, faildet:get_neighbors(NewFD)),
+                    log_serv:est_node_count(NAlive),
                     Msg = {dead, Dead, NAlive},
                     case consensus:handle_message(faildet, Msg, Cons) of
                         {ok, Cons1} -> Cons1;
