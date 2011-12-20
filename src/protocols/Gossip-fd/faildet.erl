@@ -53,7 +53,6 @@ init ({TFail, TCleanup, TGossip})
 
 handle_message (_From, {known_list, KnownList}, FD = #fd{}) ->
     NewFD = merge(KnownList, FD),
-    lists:foreach(fun peer_chan:greet/1, NewFD#fd.last_born),
     {ok, NewFD}.
 
 handle_introduction (_From, Pid, FD = #fd{}) ->
@@ -64,7 +63,7 @@ handle_info (_, S) ->
 
 handle_beacon (FD=#fd{}) ->
     NewFD = period(FD),
-    case forge_message(FD) of
+    case ready_message(FD) of
         none ->
             ok;
         KnownList ->
@@ -115,7 +114,8 @@ merge (KnownList, FD) ->
         fun ({Pid, Hb}, {Brn, Kns}) ->
             case update(Pid, Hb, Kns, FD#fd.tfail,
                         FD#fd.tcleanup) of
-                {insert, NewKns} -> {[Pid | Brn], NewKns};
+                {insert, NewKns} ->
+                    {[Pid | Brn], NewKns};
                 {_, NewKns} -> {Brn, NewKns}
             end
         end,
@@ -133,7 +133,7 @@ purge_iteration (Known, Dead, Action, Update, Iterator) ->
                                           Update, none),
             NewDead =
                 case What of
-                    drop -> [Pid | Dead];                           
+                    drop -> [Pid | Dead];
                     _ -> Dead
                 end,
             purge_iteration(NewKnown, NewDead, Action,
@@ -165,6 +165,8 @@ purge_known (Known) ->
         end,
     {Dead, NewKnown} = purge_iteration(Known, [], Action, Update,
                                        gb_trees:iterator(Known)),
+    % If we deleted the 80% of the nodes, the tree gets re-balanced
+    % (totally arbitrary)
     case gb_trees:size(NewKnown) < 0.8 * gb_trees:size(Known) of
         true -> {Dead, gb_trees:balance(NewKnown)};
         false -> {Dead, NewKnown}
@@ -188,21 +190,24 @@ period (FD = #fd{ known = Known, heartbeat = HB }) ->
 get_neighbors (#fd{ known=Known }) ->
     {gb_trees:size(Known), gb_trees:keys(Known)}.
 
-forge_message (#fd{ known=Known, gossip_cd=GCD, heartbeat=HB }) ->
+forge_message (#fd{ known=Known, heartbeat=HB }) ->
+    IsAlive =
+        fun ({_, Record}) ->
+            Record#neighbor.ttl > 0
+        end,
+    Unpack =
+        fun ({Pid, Record}) ->
+            {Pid, Record#neighbor.heartbeat}
+        end,
+    KnownList = gb_trees:to_list(Known),
+    AllOther = lists:map(Unpack,
+                         lists:filter(IsAlive, KnownList)),
+    [{self(), HB} | AllOther].
+
+ready_message (FD = #fd{ gossip_cd=GCD }) ->
     case GCD of
         expired ->
-            IsAlive =
-                fun ({_, Record}) ->
-                    Record#neighbor.ttl > 0
-                end,
-            Unpack =
-                fun ({Pid, Record}) ->
-                    {Pid, Record#neighbor.heartbeat}
-                end,
-            KnownList = gb_trees:to_list(Known),
-            AllOther = lists:map(Unpack,
-                                 lists:filter(IsAlive, KnownList)),
-            [{self(), HB} | AllOther];
+            forge_message(FD);
         _ ->
             none
     end.

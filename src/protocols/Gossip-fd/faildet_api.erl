@@ -13,15 +13,22 @@ send_known_list (Pid, KnownList) when is_pid(Pid) ->
 send_known_list (Peers, KnownList) ->
     case Peers of
         {0, _} ->
-            ok;
+            bcast_known_list(KnownList);
         {NPids, Pids} ->
-            gfd_api:faildet_send(lists:nth(random:uniform(NPids), Pids),
-                                 envelop(KnownList)),
+            % With a 10% probability send broadcast anyways
+            case random:uniform() < 0.1 of
+                false -> random_send_known_list(KnownList, Pids, NPids);
+                true -> bcast_known_list(KnownList)
+            end,
             ok
     end.
 
 bcast_known_list (KnownList) ->
     gfd_api:faildet_bcast(envelop(KnownList)).
+
+random_send_known_list (KnownList, Pids, NPids) ->
+    gfd_api:faildet_send(lists:nth(random:uniform(NPids), Pids),
+                         envelop(KnownList)).
 
 greet (Peer) ->
     gfd_api:faildet_greet(Peer).

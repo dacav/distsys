@@ -48,7 +48,6 @@ init ({FDParams = {_,_,_}, NPeers, TBeacon, BeaconWait}) ->
     {ok, Status}.
 
 handle_spawn_notify (Pid, Status = #status{ alive=Alive, npeers=N }) ->
-    log_serv:log("Started: ~p", [Pid]),
     % We introduce the new pid to a random process among the spawned ones.
     introduce_random(Pid, Alive),
     NewAlive = gb_sets:insert(Pid, Alive),
@@ -59,6 +58,7 @@ handle_spawn_notify (Pid, Status = #status{ alive=Alive, npeers=N }) ->
         N ->
             % Upon all nodes have been correctly spawned, we start thexs
             % protocol
+            log_serv:log("Nodes started: N=~p", [N]),
             prepare_protocol(NewStatus);
         _ -> ok
     end,
