@@ -38,15 +38,16 @@ conf_channel () ->
 conf_keeper () ->
     Keeper = get_conf(keeper),
     KeeperArgs = get_conf(keeper_args),
-    {Keeper, KeeperArgs}.
+    LogArgs = get_conf(log_args),
+    {Keeper, KeeperArgs, LogArgs}.
 
 start (normal, _Args) ->
     io:format(standard_error, "Loading configuration...~n", []),
     try
         conf_channel(),
-        {Keeper, KeeperArgs} = conf_keeper(),
+        {Keeper, KeeperArgs, LogArgs} = conf_keeper(),
         io:format(standard_error, "Starting YUNA...~n", []),
-        main:start_link(Keeper, KeeperArgs)
+        main:start_link(Keeper, KeeperArgs, LogArgs)
     catch
         throw:{configuration, Key} ->
             io:format(standard_error,

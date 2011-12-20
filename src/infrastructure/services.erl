@@ -2,7 +2,7 @@
 -author("Giovanni Simoni").
 
 -behavior(supervisor).
--export([init/1, start_link/2]).
+-export([init/1, start_link/3]).
 
 -define(MAX_RESTART, 3).
 -define(MAX_TIME_RESTART, 1000).
@@ -10,10 +10,10 @@
 
 -import(conf).
 
-init ([Keeper, KeeperArgs]) ->
+init ({Keeper, KeeperArgs, LogArgs}) ->
     % Log service descriptor
     Logger = {logger,
-        {log_serv, start_link, conf:get_default(log_serv)},
+        {log_serv, start_link, tuple_to_list(LogArgs)},
         permanent, ?KILL_THRESHOLD, worker, [log_serv]
     },
     % Peers keeper server
@@ -34,6 +34,6 @@ init ([Keeper, KeeperArgs]) ->
         }
     }.
 
-start_link (Keeper, KeeperArgs) ->
+start_link (Keeper, KeeperArgs, LogArgs) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE,
-                          [Keeper, KeeperArgs]).
+                          {Keeper, KeeperArgs, LogArgs}).
