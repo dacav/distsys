@@ -25,7 +25,7 @@
         %{keeper_args, 3}
 
         {log_args, { standard_error,    % For visual logging
-                     "statfile.log"     % For stats retrival
+                     "statfile"         % For stats retrival
                    }
         },
         {keeper, gfd_keeper},
