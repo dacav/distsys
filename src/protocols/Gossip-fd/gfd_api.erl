@@ -23,5 +23,5 @@ cons_bcast (Msg) ->
 
 cons_decide (Val) ->
     Msg = {decide, Val},
-    peer_chan:bcast_send({cons, Msg}),
+    %peer_chan:bcast_send({cons, Msg}),
     peer_ctrl:notify_result(Msg).

@@ -154,10 +154,9 @@ agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
     Target = trunc(N/2),
     case gb_sets:size(Prop) of
         M when M < Target ->
-            log_serv:log("Heard: ~p, Target: ~p", [M, Target]),
             {ok, Cons};
         M ->
-            log_serv:log("Heard enough peers: ~p/~p (N=~p)",
+            log_serv:log("Heard enough peers: ~p/~p (N=~p), deciding",
                          [M, Target, N]),
             case Rec of
                 ['?'] ->
@@ -165,7 +164,6 @@ agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
                     run_next_round(Cons);
                 [V] when V =/= '?' ->
                     % Decide
-                    log_serv:log("Deciding"),
                     gfd_api:cons_decide(V),
                     {ok, Cons#cons{ decided=true }};
                 ['?', V] ->
