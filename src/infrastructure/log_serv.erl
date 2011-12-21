@@ -9,8 +9,15 @@
 
 -record(loginfo, {
         outfile,
-        statfile,
+        statfds,
         starttime
+    }
+).
+
+-record(statfiles, {
+        node,
+        est_node,
+        decision
     }
 ).
 
@@ -34,20 +41,40 @@ terminate (_, _) ->
 % Server logic
 % -----------------------------------------------------------------------
 
+now_millisec () ->
+    {Mega, Sec, Micro} = erlang:now(),
+    ((Mega * 1000000) + Sec) * 1000 + trunc(Micro / 1000).
+
+openfile (Name, Suffix, Default) ->
+    FN = Name ++ "_" ++ atom_to_list(Suffix) ++ ".log",
+    case file:open(FN, write) of
+        {ok, IODev} ->
+            IODev;
+        {error, Reason} ->
+            io:format(Default, "Cannot open ~s (~p) defaulting to ~p",
+                      [Default, Reason, Default]),
+            Default
+    end.
+
+get_descriptor (SFDs, Class) ->
+    case Class of
+        node -> SFDs#statfiles.node;
+        est_node -> SFDs#statfiles.est_node;
+        decision -> SFDs#statfiles.decision;
+        _ -> erlang:error(no_class, [SFDs, Class])
+    end.
+
 init ({OutFile, StatFN}) ->
     % I hope erlang:time() is enough. It gives the time since 00:00:00
     % of the current day.
-    StatFile =
-        case file:open(StatFN, write) of
-            {ok, IODev} -> IODev;
-            {error, Reason} ->
-                io:format(OutFile, "Cannot open ~s (~p) defaulting to ~p",
-                          [OutFile, Reason, OutFile]),
-                OutFile
-        end,
-    Start = calendar:time_to_seconds(erlang:time()),
+    StatFiles = #statfiles{
+        node=openfile(StatFN, node_count, OutFile),
+        est_node=openfile(StatFN, est_node_count, OutFile),
+        decision=openfile(StatFN, decision_count, OutFile)
+    },
+    Start = now_millisec(),
     {ok, #loginfo{ outfile=OutFile,
-                   statfile=StatFile,
+                   statfds=StatFiles,
                    starttime=Start
          }
     }.
@@ -58,7 +85,7 @@ print_head (Who, OutFile) ->
     ok.
 
 timediff (#loginfo{ starttime=Start }) ->
-    calendar:time_to_seconds(erlang:time()) - Start.
+    now_millisec() - Start.
 
 handle_cast ({text, Who, Format, Data},
              Status = #loginfo{ outfile=OutFile })
@@ -78,9 +105,10 @@ handle_cast ({text, Who, S}, Status = #loginfo{ outfile=OutFile }) ->
     io:fwrite(OutFile, Fmt, [S]),
     {noreply, Status};
 
-handle_cast ({stat, Class, N}, Status = #loginfo{ statfile=SF }) ->
+handle_cast ({stat, Class, N}, Status = #loginfo{ statfds=SFDs }) ->
     T = timediff(Status),
-    io:fwrite(SF, "~p:~p:~p\n", [Class, T, N]),
+    FD = get_descriptor(SFDs, Class),
+    io:format(FD, "~p ~p\n", [T, N]),
     {noreply, Status}.
 
 start (OutFile, StatFN) ->
@@ -104,4 +132,4 @@ est_node_count (N) ->
     gen_server:cast(?MODULE, {stat, est_node, N}).
 
 decision_count (N) ->
-    gen_server:cast(?MODULE, {stat, decided, N}).
+    gen_server:cast(?MODULE, {stat, decision, N}).
