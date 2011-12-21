@@ -150,14 +150,14 @@ run_phase2 (Cons = #cons{ est_from_c=E }) ->
     },
     {ok, NewCons}.
 
-agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, nalive=N }) ->
-    Target = trunc(N/2),
+agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, id_assign=Ids }) ->
+    N = gb_trees:size(Ids),
+    Target = trunc(N/2) + 1,
     case gb_sets:size(Prop) of
         M when M < Target ->
             {ok, Cons};
         M ->
-            log_serv:log("Heard enough peers: ~p/~p (N=~p), deciding",
-                         [M, Target, N]),
+            log_serv:log("Heard enough peers: ~p/~p; deciding", [M, N]),
             case Rec of
                 ['?'] ->
                     log_serv:log("Next round"),

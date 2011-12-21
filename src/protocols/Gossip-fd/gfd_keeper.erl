@@ -12,7 +12,6 @@
 -record(status, {
     alive=gb_sets:new(),  % Set of spawned nodes
     result=result:new(),  % Results from node (stats)
-    stop=false,           % Termination in progress
 
     % Initialization parameters, commented later
     npeers,
@@ -85,17 +84,16 @@ handle_result_notify (Pid, {decide, Value},
             check_result(NewStatus)
     end.
 
-handle_term_notify (Pid, _Ref, Reason,
-                    Status = #status{ alive=Alive, stop=Stop } ) ->
-    log_serv:log("Dead ~p: ~p", [Pid, Reason]),
-    log_serv:node_count(gb_sets:size(Alive) - 1),
-    NewStatus = Status#status {
-        alive=gb_sets:delete_any(Pid, Alive)
-    },
-    case Stop of
-        false -> check_result(NewStatus);
-        true -> check_term(NewStatus)
-    end.
+handle_term_notify (Pid, _Ref, Reason, Status = #status{ alive=Alive }) ->
+    case Reason of
+        crashed ->
+            ok;
+        _ ->
+            log_serv:log("Dead ~p: ~p", [Pid, Reason])
+    end,
+    NewAlive = gb_sets:delete_any(Pid, Alive),
+    log_serv:node_count(gb_sets:size(NewAlive)),
+    check_result(Status#status{ alive=NewAlive }).
 
 handle_info (ready, Status) ->
     log_serv:log("Waited enough. Starting first round"),
@@ -110,35 +108,26 @@ introduce_random (One, AllOther) ->
             keeper_inject:introduce(One, Other)
     end.
 
-check_result (Status = #status{ alive=Alive, result=Result }) ->
-    case gb_sets:size(Alive) of
-        0 ->
-            log_serv:log("All nodes are dead!"),
-            stop;
-        NAlive ->
+check_result (Status = #status{ alive=Alive, result=Result, npeers=N }) ->
+    case {gb_sets:size(Alive), result:count(Result)} of
+        {A, _} when A < trunc(N/2) ->
+            log_serv:log("Less than N/2 (~p) nodes are still alive", [A]),
+            {ok, Status};
+        {X, X} ->
             LogResult =
                 fun ({Val, Count}) ->
                     log_serv:log("\tValue ~p has been selected by ~p nodes",
                                  [Val, Count])
                 end,
-            case result:count(Result) of
-                NAlive ->
-                    stop_protocol(Status),
-                    log_serv:log("Consensus (should has been) reached:"),
-                    lists:foreach(LogResult, result:stats(Result)),
-                    log_serv:log("Killing remaining processes..."),
-                    killall(gb_sets:to_list(Alive)),
-                    log_serv:log("Terminating."),
-                    stop;
-                N when N < NAlive ->
-                    {ok, Status}
-            end
-    end.
-
-check_term (Status = #status{ stop=true, alive=Alive }) ->
-    case gb_sets:size(Alive) of
-        0 -> stop;
-        _ -> {ok, Status}
+            stop_protocol(Status),
+            log_serv:log("Consensus (should has been) reached:"),
+            lists:foreach(LogResult, result:stats(Result)),
+            log_serv:log("Killing remaining processes..."),
+            killall(gb_sets:to_list(Alive)),
+            log_serv:log("Terminating."),
+            stop;
+        _ ->
+            {ok, Status}
     end.
 
 stop_protocol (Status) ->
@@ -179,6 +168,10 @@ assign_roles (Status = #status{ alive=Alive, statpeers_ratio=R }) ->
     Status#status {
         statpeers=StatPeers
     }.
+
+% ------------------------------------------------------------------------
+% Protocol-complying communication
+% ------------------------------------------------------------------------
 
 cons_inject_bcast (Msg) ->
     keeper_inject:bcast({cons, Msg}).
