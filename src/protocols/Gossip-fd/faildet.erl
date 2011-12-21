@@ -23,7 +23,9 @@
     gossip_cd,          % Countdown to gossip time
 
     last_born = [],     % List of recently appeared peers
-    last_dead = []      % List of recently disappeared peers
+    last_dead = [],     % List of recently disappeared peers
+
+    stats_enabled=false
 }).
 
 -record(neighbor, {
@@ -53,10 +55,16 @@ init ({TFail, TCleanup, TGossip})
 
 handle_message (_From, {known_list, KnownList}, FD = #fd{}) ->
     NewFD = merge(KnownList, FD),
-    {ok, NewFD}.
+    do_stats(NewFD),
+    {ok, NewFD};
+
+handle_message (keeper, {stats_enabled, Setting}, FD=#fd{}) ->
+    {ok, FD#fd{ stats_enabled=Setting }}.
 
 handle_introduction (_From, Pid, FD = #fd{}) ->
-    {ok, insert_neighbor(Pid, FD)}.
+    NewFD = insert_neighbor(Pid, FD),
+    do_stats(NewFD),
+    {ok, NewFD}.
 
 handle_info (_, S) ->
     {ok, S}.
@@ -69,11 +77,17 @@ handle_beacon (FD=#fd{}) ->
         KnownList ->
             faildet_api:send_known_list(get_neighbors(FD), KnownList)
     end,
+    do_stats(NewFD),
     {ok, NewFD}.
 
 % ------------------------------------------------------------------------
 % Failure detector internal logic
 % ------------------------------------------------------------------------
+
+do_stats (#fd{ known=Known, stats_enabled=true }) ->
+    log_serv:est_node_count(gb_trees:size(Known));
+do_stats (_) ->
+    ok.
 
 update_pid (Pid, Known, ToDo, Update, New) ->
     case gb_trees:lookup(Pid, Known) of

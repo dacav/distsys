@@ -31,6 +31,7 @@
         {keeper, gfd_keeper},
         {keeper_args, { {3, 20, 5},     % TFail, TCleanup, TGossip
                         500,            % NPeers
+                        0.01,           % StatPeers [ratio]
                         500,            % TBeacon, [ms]
                         120             % BeaconWait, [TBeacon]
                         % 120 beacons = 1 min

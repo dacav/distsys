@@ -1,7 +1,7 @@
 -module(gfd_api).
 -author("Giovanni Simoni").
--export([faildet_send/2, faildet_greet/1, faildet_bcast/1, cons_send/2,
-         cons_decide/1, cons_bcast/1]).
+-export([faildet_send/2, faildet_greet/1, faildet_bcast/1,
+         cons_send/2, cons_decide/1, cons_bcast/1]).
 
 -import(peer_chan).
 -import(peer_ctrl).
