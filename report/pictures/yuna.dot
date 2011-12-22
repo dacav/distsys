@@ -1,0 +1,18 @@
+digraph Yuna {
+    main -> services
+    main -> peers
+
+    services -> logger
+    services -> peers_keeper
+    services -> bcast
+
+    p0 [shape=box]
+    p1 [shape=box]
+    "..." [shape=box]
+    pN [shape=box]
+
+    peers -> p0
+    peers -> p1
+    peers -> "..."
+    peers -> pN
+}

@@ -1,0 +1,117 @@
+\Erlang\ is a functional, interpreted and weakly typed language, which
+is provided with a built-in process management \Acr{API} based on
+message passing. Some interesting features are:
+\begin{itemize}
+\item   The capability of spawning processes in an easy way
+        (concurrency is provided trough real parallelism, and the
+        language supports \Acr{SMP});
+\item   Processes can send and receive messages asynchronously;
+\item   Dependency chains can be built among processes (so that a
+        crashing process also tears down all the dependent ones);
+\item   Processes can \emph{monitor} other processes, getting notified
+        in case of crash;
+\item   Applications can be easily deployed over the network, with hot
+        swapping of executable code.
+\end{itemize}
+
+This capabilities, plus the \emph{side-effects free} design typical
+of a functional language, make \Erlang\ particularly well suited for
+distributed concurrent applications.
+
+Apart from the language itself, \Erlang\ comes with a stable and tested
+standard library named \OTP\ (\OTPa), which provides a generic framework
+for services development and a standard way of structuring applications.
+
+This section gives a very brief overview on the language and on how an
+\Erlang\ application is structured. The purpose is just giving a better
+understanding of the project: for a more detailed description please
+refer to the official \Erlang\ documentation\cite{bib:ErlApp}.
+
+
+\subsection{About the syntax}
+
+The language syntax is simple and straightforward. Naming
+conventions determine the semantics of the identifiers. The main data
+types are the following:
+
+\begin{description}
+
+    \item[atoms] are system-wide constant literals defined by
+        \lstinline{small_caps_identifiers} or
+        \lstinline{'single quoted strings'}. Function names, module
+        names and boolean values are atoms.
+
+    \item[numbers] are numerical constants;
+
+    \item[tuples] are defined as items of any type, comma-separated and
+        \lstinline|{surrounded, by, braces}|;
+
+    \item[lists] are sequences of items of any (possibly mixed) type.
+        For instance
+        \lstinline{[atoms, plus, 1, number]}; also strings are lists;
+
+    \item[pids] are process identifiers, usually generated trough the
+        language \Acr{API} when spawning processes.
+
+\end{description}
+
+More data types allow to work with low-level data streams and native
+platform low-level objects.
+
+All \lstinline{CamelCase} identifiers are \emph{variables}, namely
+placeholders for items of any type which can be matched. By example:
+
+\begin{lstlisting}
+test_function (Value)
+    case Value of
+        3 -> io:format("I got the value 3\n");
+        goat -> io:format("I got the 'goat' atom\n");
+        [] -> io:format("I got an empty list\n");
+        X when is_list(X) -> io:format("I got a list\n");
+        _ -> io:format("No idea...\n")
+    end.
+\end{lstlisting}
+
+The conventional signature of this function is \Const{test_function/1},
+where the value \emph{1} declares the \emph{arity} of the function
+
+
+\subsection{About \OTP}
+
+The language provides a concept named \Keyword{behaviors}. It resembles the
+semantics of \emph{class} in \Tech{Haskell}, and the semantics of
+\emph{interface} in \Tech{Java}: a module declaring a certain
+\Keyword{behavior} is forced to provide a set of the callback functions,
+which can be called by external modules.
+
+This syntactic tool is used by \OTP\ to provide many
+\emph{general-purpose} services, which use callback functions of user
+modules as stubs. The callbacks, in turn, are supposed to implement the
+actual business logic.
+
+Many generic services are available. Among those:
+\begin{itemize}
+\item   \Const{gen\_server} implements a \emph{client-server} logic;
+\item   \Const{gen\_fsm} implements a \emph{finite state machine} logic;
+\item   \Const{gen\_event} implements the logic of an
+        \emph{event handler}.
+\end{itemize}
+
+Moreover, \OTP\ provides a standard way of organizing hierarchically the
+application: the generic \Const{supervisor} module. The associated
+\Keyword{behavior} requires the implementing module (henceforth
+\Keyword{supervisor}) to export an initialization function
+(\Const{init/1}), which is supposed to return a list of
+\emph{descriptors}; each \emph{descriptor} contains, as a tuple, a set of
+data required to spawn the \Keyword{supervised} processes.
+
+\emph{Child Specifications} of \Keyword{supervised} processes can
+declare a process as \Keyword{permanent} (gets always be restarted in
+case of termination), \Keyword{temporary} (never restarted) and
+\Keyword{transient} (restarted only if it terminates abnormally).
+
+Finally, many generic services require, as design pattern, to be started
+as process trough a specific function call. This is valid for the
+\Const{supervisor} module as well: a \Keyword{supervisor} can manage
+\Keyword{supervisors}, thus we can have a \emph{supervision hierarchy}
+(henceforth \Keyword{application}).

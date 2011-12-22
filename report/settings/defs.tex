@@ -1,0 +1,41 @@
+% ------------------------------------------------------------------------
+% Meta-stuff
+% ------------------------------------------------------------------------
+\newcommand{\Paper}[2]{{#1} (\emph{#2})}
+\newcommand{\Web}[1]{\url{#1}}
+\newcommand{\Acr}[1]{\emph{#1}}
+\newcommand{\Const}[1]{{\lstinline{#1}}}
+\newcommand{\File}[1]{{\sffamily{#1}}}
+\newcommand{\Keyword}[1]{{\bfseries{#1}}}
+
+% ------------------------------------------------------------------------
+% Other
+% ------------------------------------------------------------------------
+\newcommand{\Tech}[1]{{\sc {#1}}}
+\newcommand{\YUNA}{\Tech{YUNA}}
+\newcommand{\Erlang}{\Tech{Erlang}}
+\newcommand{\OTP}{\Tech{OTP}}
+\newcommand{\OTPa}{\Tech{Open Telecom Platform}}
+
+% ------------------------------------------------------------------------
+% Pictures (i hate 'em)
+% ------------------------------------------------------------------------
+
+% args: image path
+%       caption
+%       width
+%       label
+\newcommand{\Image}[4]{%
+    \begin{figure}[hbt]%
+    \centering%
+    \includegraphics[width=#3\columnwidth]{#1}%
+    \caption{\emph{#2}}%
+    \label{#4}%
+    \end{figure}%
+    }
+
+% args: image path
+%       caption
+%       label
+\newcommand{\ImageFW}[3]{\Image{#1}{#2}{0.8}{#3}}
+

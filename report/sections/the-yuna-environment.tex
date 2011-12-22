@@ -1,0 +1,26 @@
+\YUNA\ is a \OTP-compliant \Keyword{application}. It defines the hierarchy
+shown in Figure~\ref{pic:YUNA-hier}.
+
+\ImageFW{pictures/yuna}{the \YUNA\ hierarchy}{pic:YUNA-hier}
+
+\begin{itemize}
+
+    \item   \Const{main} (file \File{infrastructure/main.erl}) is the top
+            \Keyword{supervisor};
+
+    \item   \Const{services} (file \File{infrastructure/services.erl}) is
+            the supervisor in charge of managing the permanent services;
+
+    \item   \Const{logger} (file \File{infrastructure/log\_serv.erl});
+
+    \item   \Const{bcast} (file \File{infrastructure/bcast.erl});
+
+\end{itemize}
+
+has a \Keyword{supervisor} called \emph{main} which takes care of managing
+the whole system. Below \emph{main} there are two \emph{supervisors},
+
+
+%            \item   The \emph{peers supervisor} is a \emph{pool} for the
+%                    processes which will be executing the required
+%                    distributed logic
