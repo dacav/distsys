@@ -1,0 +1,28 @@
+This is pdfTeX, Version 3.1415926-1.40.10 (TeX Live 2009/Debian) (format=latex 2011.11.8)  24 DEC 2011 13:02
+entering extended mode
+ file:line:error style messages enabled.
+ %&-line parsing enabled.
+**the-yuna-environment.tex
+(./the-yuna-environment.tex
+LaTeX2e <2009/09/24>
+Babel <v3.8l> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, loaded.
+./the-yuna-environment.tex:1: Undefined control sequence.
+l.1 \subsection
+               {Overview}
+? 
+./the-yuna-environment.tex:1: Emergency stop.
+l.1 \subsection
+               {Overview}
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 5 strings out of 495062
+ 185 string characters out of 1182644
+ 45108 words of memory out of 3000000
+ 3282 multiletter control sequences out of 15000+50000
+ 3640 words of font info for 14 fonts, out of 3000000 for 9000
+ 28 hyphenation exceptions out of 8191
+ 5i,0n,1p,48b,8s stack positions out of 5000i,500n,10000p,200000b,50000s
+No pages of output.

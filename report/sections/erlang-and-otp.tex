@@ -3,7 +3,7 @@ is provided with a built-in process management \Acr{API} based on
 message passing. Some interesting features are:
 \begin{itemize}
 \item   The capability of spawning processes in an easy way
-        (concurrency is provided trough real parallelism, and the
+        (concurrency is implemented with real parallelism, and the
         language supports \Acr{SMP});
 \item   Processes can send and receive messages asynchronously;
 \item   Dependency chains can be built among processes (so that a
@@ -22,10 +22,11 @@ Apart from the language itself, \Erlang\ comes with a stable and tested
 standard library named \OTP\ (\OTPa), which provides a generic framework
 for services development and a standard way of structuring applications.
 
-This section gives a very brief overview on the language and on how an
-\Erlang\ application is structured. The purpose is just giving a better
-understanding of the project: for a more detailed description please
-refer to the official \Erlang\ documentation\cite{bib:ErlApp}.
+This section defines some keywords and gives a very brief overview on the
+language and on how an \Erlang\ application is structured. The purpose is
+just giving a better understanding of the project: for a more detailed
+description, please refer to the official \Erlang\
+documentation\cite{bib:ErlApp}.
 
 
 \subsection{About the syntax}
@@ -38,7 +39,7 @@ types are the following:
 
     \item[atoms] are system-wide constant literals defined by
         \lstinline{small_caps_identifiers} or
-        \lstinline{'single quoted strings'}. Function names, module
+        \lstinline{'single quote strings'}. Function names, module
         names and boolean values are atoms.
 
     \item[numbers] are numerical constants;
@@ -58,23 +59,25 @@ types are the following:
 More data types allow to work with low-level data streams and native
 platform low-level objects.
 
-All \lstinline{CamelCase} identifiers are \emph{variables}, namely
-placeholders for items of any type which can be matched. By example:
+As any \emph{small caps} identifier is a constant literal,
+\emph{variables} must follow a \lstinline{CamelCase} naming convention.
+They are placeholders for items of any type, which can be used in
+matching. The following example may be clarifying:
 
 \begin{lstlisting}
-test_function (Value)
+test_function (Value) ->
     case Value of
         3 -> io:format("I got the value 3\n");
         goat -> io:format("I got the 'goat' atom\n");
         [] -> io:format("I got an empty list\n");
         X when is_list(X) -> io:format("I got a list\n");
+        x -> io:format("I got the atom 'x'");
         _ -> io:format("No idea...\n")
     end.
 \end{lstlisting}
 
 The conventional signature of this function is \Const{test_function/1},
 where the value \emph{1} declares the \emph{arity} of the function
-
 
 \subsection{About \OTP}
 
@@ -84,10 +87,12 @@ semantics of \emph{class} in \Tech{Haskell}, and the semantics of
 \Keyword{behavior} is forced to provide a set of the callback functions,
 which can be called by external modules.
 
-This syntactic tool is used by \OTP\ to provide many
-\emph{general-purpose} services, which use callback functions of user
-modules as stubs. The callbacks, in turn, are supposed to implement the
-actual business logic.
+This syntactic tool is used by \OTP\ to provide many general-purpose
+services (henceforth \Keyword{abstract components}), which use callback
+functions of user modules as stubs. The callbacks, in turn, are supposed
+to implement the actual business logic (henceforth \Keyword{specific
+components}). \OTP\ uses wisely the language capabilities and
+provide both synchronous and asynchornous services.
 
 Many generic services are available. Among those:
 \begin{itemize}
@@ -99,19 +104,41 @@ Many generic services are available. Among those:
 
 Moreover, \OTP\ provides a standard way of organizing hierarchically the
 application: the generic \Const{supervisor} module. The associated
-\Keyword{behavior} requires the implementing module (henceforth
-\Keyword{supervisor}) to export an initialization function
-(\Const{init/1}), which is supposed to return a list of
-\emph{descriptors}; each \emph{descriptor} contains, as a tuple, a set of
-data required to spawn the \Keyword{supervised} processes.
+\Keyword{behavior} requires the \Keyword{specific component} to export an
+initialization function, which is supposed to return a list of
+\emph{child specifications}; each specification is a tuple containing all
+the parameters needed to spawn the \emph{supervised} processes. A
+\Keyword{specific component} implementing this logic is called
+\Keyword{supervisor}.
 
-\emph{Child Specifications} of \Keyword{supervised} processes can
-declare a process as \Keyword{permanent} (gets always be restarted in
-case of termination), \Keyword{temporary} (never restarted) and
+Trough child specifications, a supervised processes can be declare as
+\Keyword{permanent} (namely it gets always restarted in case of
+termination), \Keyword{temporary} (never restarted) and
 \Keyword{transient} (restarted only if it terminates abnormally).
 
-Finally, many generic services require, as design pattern, to be started
-as process trough a specific function call. This is valid for the
-\Const{supervisor} module as well: a \Keyword{supervisor} can manage
-\Keyword{supervisors}, thus we can have a \emph{supervision hierarchy}
-(henceforth \Keyword{application}).
+Finally, as design pattern, many generic services are started as process
+trough a specific function call which is part of the \Keyword{abstract
+component}. This is valid for \Const{supervisor} as well, thus a
+\Keyword{supervisor} can manage \Keyword{supervisors} in a
+\emph{supervision hierarchy} (henceforth \Keyword{application}).
+
+\subsubsection{Coding conventions} \label{subsub:CodingConventions}
+
+\begin{itemize}
+
+    \item   The callbacks for \Keyword{behaviors} of \OTP\ library usually
+            are required to return a tuple of the form \RetOK{Status} or
+            \RetErr{Reason}, where \RetErr{ok}, \Const{error} are
+            \emph{atoms}, while \Const{Status} and \Const{Reason} are
+            respectively the private data of the \Keyword{specific
+            component} and the reason which caused the error.
+
+    \item   Except for \Const{init} The last formal parameter of all
+            \Keyword{specific component} callbacks is conventionally
+            dedicated to the afore mentioned private date, namely any
+            valid \Erlang\ object which keeps the status.
+
+\end{itemize}
+
+Those conventions are followed by my program as well.
+\See{\Section{sec:yuna-api-reference}} on the \Acr{API}.

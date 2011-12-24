@@ -1,0 +1,139 @@
+Before reading this, please read \Section{sec:erlang-and-otp}.
+\Paragraph{subsub:CodingConventions} gives order to get an overview on
+coding conventions: the last parameter of all events is the \emph{status}
+of the running logic.
+
+\subsection{The \Keyword{keeper} \Acr{API}}
+
+    \subsubsection{Events and callbacks}
+
+        \begin{itemize}
+        \item \Func{init}{1} \\
+            This function is provided with an extern parameter,
+            corresponding to the \Const{keeper_args} voice in the
+            configuration file (\see{\Subsection{sub:ConfigurationFile}}).
+            It is supposed to do some initialization (for instance
+            spawning peers using the \Func{keeper_proto:add\_peers}{3}).
+            It can return \RetOK{Status} in case of success or
+            \RetErr{Reason} in case of failure;
+
+        \item \Func{handle_spawn_notify}{2} \\
+            A freshly peer can call the \Func{peer_ctrl:notify_spawn}{0}
+            function. This will result in this event to be issued. The
+            first parameter is the \Keyword{Pid} of the notifying process;
+
+        \item \Func{handle_result_notify}{3} \\
+            A peer can call the \Func{peer_ctrl:notify_result}{1}
+            function in order to send a piece of elaborated information to
+            the \Keyword{keeper}. This will result in this event to b e
+            issued. The first parameter is the \emph{pid} of the
+            peer, the second is the result;
+
+        \item \Func{handle_term_notify}{4} \\
+            When a peer dies (both for normal termination or crash) the
+            \Keyword{keeper} gets notified trough this event. The first
+            parameter is the \emph{pid} of the peer, the second may be the
+            \Const{undefined} atom or a \emph{\Erlang\ reference}
+            associated to the spawning (\see{\Erlang\ documentation}), the
+            third is the reason of the termination;
+
+        \item \Func{handle_info}{2} \\
+            If the \Keyword{abstract component} gets some raw message, not
+            appropriately enveloped with the underlaying protocol, the
+            \Keyword{keeper} gets notified through this event. The first
+            parameter is, of course, the raw packet.
+
+        \end{itemize}
+
+    \subsubsection{Library functions}
+
+        \begin{enumerate}
+        \item   \Const{keeper\_inject}
+
+            \begin{itemize}
+
+            \item \Func{send}{2} \\
+                Using this function, the keeper can send a message to a
+                specific node (first parameter), triggering its
+                \Func{handle_introduction}{3} callback. The message
+                (second parameter) is supposed to be understood by the
+                \Keyword{specific peer}, which will see the \emph{atom}
+                \Keyword{keeper} as sender;
+
+            \item \Func{send}{3} \\
+                This function is the same as \Func{send}{2}, except it has
+                and additional parameter (the first one) which specifies a
+                sender for the message. This can be used, for instance, to
+                spoof a \emph{pid};
+
+            \item \Func{introduce}{2} \\
+                This function triggers the \Func{handle_introduction}{3}
+                callback of the peer which \emph{pid} is specified as
+                first parameter. The peer will be introduced to the peer
+                specified as second parameter. The sender of the
+                introduction message will be the \emph{atom}
+                \Keyword{keeper};
+
+            \item \Func{introduce}{3} \\
+                This function is the same as \Func{introduce}{2}, except
+                it has and additional parameter (the first one) which
+                specifies a sender for the introduction message. This can
+                be used, for instance, to spoof a \emph{pid};
+
+            \item \Func{bcast}{1} \\
+                This function achieves broadcasting of a message. It's
+                pretty similar to \Func{send}{2}, except of course it
+                doesn't require a target \emph{pid};
+
+            \item \Func{bcast}{2} \\
+                This function achieves broadcasting of a message. It's
+                pretty similar to \Func{send}{3}, except of course it
+                doesn't require a target \emph{pid};
+
+            \end{itemize}
+
+        \item   \Const{keeper\_proto}
+
+            \begin{itemize}
+            \item \Func{add_peers}{3}
+            \item \Func{add_peers_pidonly}{3}
+            \item \Func{enable_beacon}{1}
+            \item \Func{disable_beacon}{0}
+            \end{itemize}
+
+        \end{enumerate}
+
+\subsection{The \Keyword{peer} \Acr{API}}
+
+    \subsubsection{Events and callbacks}
+        \begin{itemize}
+        \item \Func{init}{1}
+        \item \Func{handle_message}{3}
+        \item \Func{handle_introduction}{3}
+        \item \Func{handle_beacon}{1}
+        \item \Func{handle_info}{2}
+        \end{itemize}
+
+    \subsubsection{Library functions}
+
+        \begin{enumerate}
+            \item   \Const{peer\_chan}
+                \begin{itemize}
+                \item \Func{send}{2}
+                \item \Func{greet}{1}
+                \item \Func{bcast_send}{1}
+                \item \Func{bcast_greet}{0}
+                \end{itemize}
+
+            \item   \Const{peer\_ctrl}
+                \begin{itemize}
+                \item \Func{notify_spawn}{0}
+                \item \Func{notify_result}{1}
+                \item \Func{notify_term}{1}
+                \item \Func{notify_term}{0}
+                \end{itemize}
+        \end{enumerate}
+
+\subsection{The configuration file} \label{sub:ConfigurationFile}
+
+

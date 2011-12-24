@@ -1,26 +1,129 @@
+% -----------------------------------------------------------------------
+\subsection{Overview}
+% -----------------------------------------------------------------------
+
 \YUNA\ is a \OTP-compliant \Keyword{application}. It defines the hierarchy
 shown in Figure~\ref{pic:YUNA-hier}.
 
 \ImageFW{pictures/yuna}{the \YUNA\ hierarchy}{pic:YUNA-hier}
 
+The involved \Keyword{supervisors} are:
 \begin{itemize}
 
-    \item   \Const{main} (file \File{infrastructure/main.erl}) is the top
-            \Keyword{supervisor};
+    \item   \Const{main} (file \PathSrc{infrastructure/main.erl}) which is
+            placed at the top of the hierarchy, it just starts the
+            business logic;
 
-    \item   \Const{services} (file \File{infrastructure/services.erl}) is
-            the supervisor in charge of managing the permanent services;
+    \item   \Const{services} (file \PathSrc{infrastructure/services.erl})
+            which is in charge of managing the permanent services:
 
-    \item   \Const{logger} (file \File{infrastructure/log\_serv.erl});
-
-    \item   \Const{bcast} (file \File{infrastructure/bcast.erl});
+    \item   \Const{peers} (file \PathSrc{infrastructure/peers.erl})
+            which is a \emph{pool} for the processes which will be
+            executing the required distributed logic.
 
 \end{itemize}
 
-has a \Keyword{supervisor} called \emph{main} which takes care of managing
-the whole system. Below \emph{main} there are two \emph{supervisors},
+The \Keyword{services} under the \Const{services} \Keyword{supervisor}
+are:
+\begin{itemize}
+
+\item   \Const{logger} (file \PathSrc{infrastructure/log\_serv.erl})
+        which provides a simple \Acr{API} for logging events and
+        collecting statistics:
+    \begin{itemize}
+
+    \item   It implements an \OTP\ \Const{gen\_server};
+
+    \item   As it corresponds to a dedicated process, logging messages are
+            enqueued, thus the output text from the processes is never
+            overlapped;
+
+    \item   In order to reduce the logging overhead, calls to the logger
+            are asynchronous
+
+    \end{itemize}
+
+\item   \Const{bcast} (file \PathSrc{infrastructure/bcast.erl}) which
+        reads messages from the input queue and forwards them to all the
+        processes which subscribed the service:
+    \begin{itemize}
+
+    \item   Like \Const{logger}, it implements an \OTP\
+            \Const{gen\_server};
+
+    \item   The broadcasting also implements a timer which is used to
+            serve subscribers with a periodic beacon (this models the
+            internal clock of distributed nodes, however they are not
+            supposed to consider it as a \emph{global clock}).
+
+    \end{itemize}
+
+\item   \Const{peers\_keeper} is a generic service, namely it's
+        constituted by an \Keyword{abstract component}
+        (file \PathSrc{infrastructure/behavs/gen\_keeper.erl})
+        which can be used to monitor the working distributed algorithm.
+        It must be associated with a \Keyword{specific component} which
+        implements the supervision part of the distributed algorithm.
+
+\end{itemize}
+
+The processes under the \Const{peers} \Keyword{supervisor} implement the
+logic associated with the actual distributed algorithm. As for the
+\Const{peers\_keeper}, the running peers are supposed to be
+\Keyword{specific components} implementing an \Keyword{abstract component}
+(file \PathSrc{infrastructure/behavs/gen\_peer.erl}).
+
+Both \Const{gen\_keeper} and \Const{gen\_peer} export a \Keyword{behavior}
+which forces the implementation of some events, constituting an
+\emph{event-driven} environment. They are also provided with a dedicated
+\Acr{API}, which abstracts away an internal communication protocol.
 
 
-%            \item   The \emph{peers supervisor} is a \emph{pool} for the
-%                    processes which will be executing the required
-%                    distributed logic
+% -----------------------------------------------------------------------
+\subsection{Startup dynamics} \label{sub:StartupDynamics}
+% -----------------------------------------------------------------------
+
+At startup the application reads the configuration file
+(\Path{ebin/yuna.app}) which is required to contain the name of a module
+implementing the \Const{gen\_keeper} \Keyword{behavior}. Let's call it
+\Keyword{specific keeper}. When \Const{gen\_keeper} is activated by the
+\Const{services} \Keyword{supervisor}, it's parametrized with the name of
+the \Keyword{specific keeper}.
+
+The \Acr{API} can now be used by the \Keyword{specific keeper} to spawn
+and control the peers, being notified on what's going on as events are
+risen.
+
+From the \emph{peer} point of view, the concept is pretty much the same:
+the library function used by \Keyword{specific keeper} to spawn nodes must
+be parametrized with the number $N$ of required peers, plus the name of a
+module implementing the \Keyword{behavior} of the \Const{gen\_peer}
+\Keyword{abstract component}. So far $N$ \Keyword{specific peers} are
+spawned.
+
+The spawning operation consists, under the hood, in subscribing
+dynamically child specifications to the \Const{peers} \OTP\
+\Keyword{supervisor}.
+
+
+% -----------------------------------------------------------------------
+\subsection{The communication system}
+% -----------------------------------------------------------------------
+
+As I mentioned in the previous subsection, both the \Keyword{specific
+keeper} and the \Keyword{specific peer} are provided with a set of
+functions which allows \Keyword{peers} to communicate among them
+or to notify the system about events, and the \Keyword{keeper} to manage
+\Keyword{peers} and to \emph{inject} messages in the system.
+
+Those functions abstract away the underlaying communication protocol (add
+details here)
+
+...
+
+Now that I explained the \emph{concept}, it's time to give an overview on
+the library functions which can be used to develop a distributed algorithm
+with \YUNA.
+
+
+

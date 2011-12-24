@@ -4,9 +4,19 @@
 \newcommand{\Paper}[2]{{#1} (\emph{#2})}
 \newcommand{\Web}[1]{\url{#1}}
 \newcommand{\Acr}[1]{\emph{#1}}
-\newcommand{\Const}[1]{{\lstinline{#1}}}
-\newcommand{\File}[1]{{\sffamily{#1}}}
+\newcommand{\Const}[1]{\lstinline{#1}}
+\newcommand{\Func}[2]{\lstinline{#1/#2}}
+\newcommand{\RetOK}[1]{\Const{\{ok, #1\}}}
+\newcommand{\RetErr}[1]{\Const{\{error, #1\}}}
+\newcommand{\Path}[1]{{\sffamily{#1}}}
+\newcommand{\PathSrc}[1]{{\sffamily{src/}\Path{#1}}}
 \newcommand{\Keyword}[1]{{\bfseries{#1}}}
+
+\newcommand{\Section}[1]{\emph{Section~\ref{#1}}}
+\newcommand{\Subsection}[1]{\emph{Susbection~\ref{#1}}}
+\newcommand{\Paragraph}[1]{\emph{Paragraph~\ref{#1}}}
+\newcommand{\See}[1]{See {#1} for further details}
+\newcommand{\see}[1]{see {#1} for further details}
 
 % ------------------------------------------------------------------------
 % Other
@@ -18,7 +28,7 @@
 \newcommand{\OTPa}{\Tech{Open Telecom Platform}}
 
 % ------------------------------------------------------------------------
-% Pictures (i hate 'em)
+% Pictures. I hate 'em.
 % ------------------------------------------------------------------------
 
 % args: image path
@@ -32,10 +42,22 @@
     \caption{\emph{#2}}%
     \label{#4}%
     \end{figure}%
-    }
+}
 
 % args: image path
 %       caption
 %       label
 \newcommand{\ImageFW}[3]{\Image{#1}{#2}{0.8}{#3}}
 
+% ------------------------------------------------------------------------
+% NAQ
+% ------------------------------------------------------------------------
+
+\newenvironment{NAQ}{\begin{enumerate}}{\end{enumerate}}
+\newcommand{\qa}[2]{
+    \item
+    \begin{description}
+    \item[Q:]{#1}
+    \item[A:]{#2}
+    \end{description}
+}
