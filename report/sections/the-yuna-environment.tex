@@ -110,20 +110,46 @@ dynamically child specifications to the \Const{peers} \OTP\
 \subsection{The communication system}
 % -----------------------------------------------------------------------
 
-As I mentioned in the previous subsection, both the \Keyword{specific
-keeper} and the \Keyword{specific peer} are provided with a set of
-functions which allows \Keyword{peers} to communicate among them
-or to notify the system about events, and the \Keyword{keeper} to manage
-\Keyword{peers} and to \emph{inject} messages in the system.
+Many theoretical problem concerning distributed systems are based on some
+assumptions about the environment in which the nodes execute the business
+logic. In this case we assume that:
+\begin{itemize}
 
-Those functions abstract away the underlaying communication protocol (add
-details here)
+\item   The nodes may be \emph{faulty} (i.e. they can possibly
+        \emph{crash} during the execution of the algorithm);
 
-...
+\item   The communication channel is reliable (no messages are lost),
+        but the communication may require a possibly unbounded time.
 
-Now that I explained the \emph{concept}, it's time to give an overview on
-the library functions which can be used to develop a distributed algorithm
-with \YUNA.
+\end{itemize}
 
+Both assumptions are reflected in the program, with modelizes them by
+implementing a communication system which has the following
+characteristics:
+\begin{itemize}
 
+\item   With a certain probability \PCrash\ the node may be
+        killed just before the transmission;
+
+\item   With probability $1 - \PCrash$ the transmission will
+        be achieved correctly, although delayed by a random time interval,
+        according to a certain probability distribution.
+
+\end{itemize}
+
+The idea of embedding the \emph{syntetic crash} into the transmission is
+justified by the facts that:
+\begin{itemize}
+
+\item   Transmission is basically mandatory for any reasonable non-trivial
+        distributed algorithm;
+
+\item   During transmission a process can influence the outcome of an
+        algorithm.
+
+\end{itemize}
+
+Both the random delay distribution and the \PCrash\ are provided
+as parameter in the configuration file
+(\see{\Subsection{sub:ConfigurationFile}}).
 
