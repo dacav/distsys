@@ -1,0 +1,135 @@
+The \PathSrc{protocols} directory is thought to contain the actual
+distributed protocols written by using the \YUNA\ facility. The project
+comes with a very simple testing application (\PathSrc{protocols/test}
+directory) and, of course, with an implementation of the \emph{consensus
+algorithm} (\PathSrc{protocols/consensus-gossip-fd} directory).
+
+As mentioned in \Subsection{sub:TheImplementation}, the implemented
+algorithm is split into two parts:
+\begin{itemize}
+
+    \item   The \emph{Failure Detector};
+    \item   The actual \emph{Consensus Algorithm}.
+
+\end{itemize}
+
+\YUNA\ provides an \Keyword{abstract component} for the nodes of a
+distributed system. Both parts are implemented as \Keyword{specific
+component}, since both of them can be modelled with the same event
+interface; so far, each node is an instance of the following structure:
+\begin{itemize}
+
+    \item   A proxy object (\Path{gfd\_peer.erl}) is directly interfaced
+            with the \Keyword{abstract component} logic, and forwards
+            events to the \emph{Failure Detector} (\Path{faildet.erl}) and
+            to the \emph{Consensus Algorithm} (\Path{consensus.erl});
+
+    \item   Messages delivered through the \Func{handle_message}{3}
+            callback are required to match the following pattern:
+
+        \begin{itemize}
+
+        \item   \Const{\{faildet, Msg\}} where \Const{faildet} is an
+                \emph{atom} and \Const{Msg} can be any object;
+
+        \item   \Const{\{cons, Msg\}} where \Const{cons} is an
+                \emph{atom} and \Const{Msg} can be any object;
+
+        \end{itemize}
+
+            Message of the first kind are unwrapped and the \Const{Msg}
+            item is forwarded, respectively, to the
+            \Func{faildet:handle_message}{3} and the
+            \Func{consensus:handle_message}{3} function;
+
+            A snippet of code showing this technique is shown in
+            \Listing{code:Proxying}.
+
+            \begin{figure}[hbt]
+            \begin{lstlisting}[caption={Proxying for the failure detector},
+                               label={code:Proxying}]
+handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
+    case faildet:handle_message(From, Msg, FD) of
+        {ok, NewFD} ->
+            NewStatus = Status#status {
+                fd=NewFD
+            },
+            {ok, NewStatus};
+        Error -> Error
+    end;
+            \end{lstlisting}
+            \end{figure}
+
+    \item   Introductions (\Func{handle_introduction}{3}) are always
+            redirected to the \emph{Failure Detector}, since it's in
+            charge of managing the list of known hosts;
+
+    \item   The beacons (\Func{handle_beacon}{1}) are also redirected to
+            the \emph{Failure Detector}, since it triggers the deletion of
+            non-responding nodes;
+
+    \item   Each change in the \emph{Failure Detector}, either caused by an
+            introduction, a beacon or by the distributed logic of the
+            \emph{Failure Detector} itself, is reflected to the
+            \emph{Consensus Algorithm} as a virtual message:
+
+        \begin{itemize}
+
+        \item   When new nodes are discovered, the \emph{Consensus
+                Algorithm} is notified through a message (by using the
+                \Func{consensus:handle_message} callback), and provided
+                with the list of discovered nodes plus the updated number
+                of alive nodes;
+
+        \item   When known nodes are \emph{suspected}, the \emph{Consensus
+                Algorithm} is notified through the
+                \Func{consensus:handle_message} callback, and provided
+                with the list of suspected nodes plus the updated number
+                of alive nodes (note that this is very important, as the
+                \emph{Consensus Algorithm} must be aware of the current
+                status of the \emph{coordinator});
+
+        \item   In both cases the \emph{atom} \Const{faildet} is set as
+                sender of the message.
+
+        \end{itemize}
+
+            A snippet of code showing this technique is shown in
+            \Listing{code:FromFaildet}.
+
+            \begin{figure}[hbt]
+            \begin{lstlisting}[caption={Events from the \emph{Failure
+                                        Detector}},
+                               label={code:FromFaildet}]
+handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
+    try
+        NewFD =
+            case faildet:handle_beacon(FD) of
+                {ok, FD0} -> FD0;
+                E0 -> throw(E0)
+            end,
+        NewCons =
+            case faildet:get_last_dead(NewFD) of
+                [] -> Cons;
+                Dead ->
+                    NAlive = element(1, faildet:get_neighbors(NewFD)),
+                    Msg = {dead, Dead, NAlive},
+                    case consensus:handle_message(faildet, Msg, Cons) of
+                        {ok, Cons1} -> Cons1;
+                        E1 -> throw(E1)
+                    end
+            end,
+        Status#status {
+            fd=NewFD,
+            cons=NewCons
+        }
+    of
+        S -> {ok, S}
+    catch
+        thorw:E -> E
+    end.
+            \end{lstlisting}
+            \end{figure}
+ 
+\end{itemize}
+

@@ -62,9 +62,11 @@ platform low-level objects.
 As any \emph{small caps} identifier is a constant literal,
 \emph{variables} must follow a \lstinline{CamelCase} naming convention.
 They are placeholders for items of any type, which can be used in
-matching. The following example may be clarifying:
+matching. The example shown in \Listing{code:Example} may be clarifying.
 
-\begin{lstlisting}
+\begin{figure}[hbt]
+\begin{lstlisting}[caption={Example of \Erlang\ code},
+                   label={code:Example}]
 test_function (Value) ->
     case Value of
         3 -> io:format("I got the value 3\n");
@@ -75,6 +77,7 @@ test_function (Value) ->
         _ -> io:format("No idea...\n")
     end.
 \end{lstlisting}
+\end{figure}
 
 The conventional signature of this function is \Const{test_function/1},
 where the value \emph{1} declares the \emph{arity} of the function
