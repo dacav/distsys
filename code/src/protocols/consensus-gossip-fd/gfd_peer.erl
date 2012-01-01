@@ -41,7 +41,10 @@ handle_message (From, {cons, Msg}, Status = #status{ cons=Cons }) ->
         NewCons =
             case Msg of
                 {init, IdAssignment} ->
-                    consensus:init(IdAssignment);
+                    case consensus:init(IdAssignment) of
+                        {ok, New} -> New;
+                        Error -> throw(Error)
+                    end;
                 _ ->
                     case consensus:handle_message(From, Msg, Cons) of
                         {ok, UpdCons} -> UpdCons;

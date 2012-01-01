@@ -24,7 +24,7 @@
 %
 % Due to the software construction, a peer is seen as a set of callbacks
 % corresponding to events. This requires the implemented algorithm to be
-% splitted in more phases, each of which can be reached by subsequent
+% split in more phases, each of which can be reached by subsequent
 % incoming events.
 %
 % Regardless of the phase, every communication coming from the Failure
@@ -32,16 +32,15 @@
 % corresponds to an updating of the corresponding status variable `nalive`.
 %
 % Phase 0 - Startup:
-%    If the node is the current round coordinator, the estimation is
-%    achieved (trough the `decide/0` function) and broadcasted to all
-%    other nodes. In any case we go to Phase 1.
+%    If the node is the current round coordinator, the value is decided
+%    randomly (trough the `random_estimate/0` function) and broadcast to
+%    all other nodes. In any case we go to Phase 1.
 %
 % Phase 1 - Waiting for something to happen:
 %    Possible cases
-%    *   A message carrying the estimation from the coordinator arrives
-%        (thus we move to phase 2);
+%    *   A message carrying the estimation from the coordinator arrives;
 %    *   A message from the Failure Detector declares the coordinator as
-%        faulty (thus we move to phase 0 of next round)
+%        dead;
 %
 % Phase 2 - Waiting the response of at least N/2 nodes
 %    At this point both a set of reporting nodes and reported values must
@@ -50,12 +49,11 @@
 %    changes in the number of nodes (information coming from the Failure
 %    Detector.
 %
-% TODO Complete
 
 init (IdAssignment) ->
     Tree = lists:foldl(fun ({I,P}, T) -> gb_trees:insert(I, P, T) end,
                        gb_trees:empty(), IdAssignment),
-    #cons{ id_assign = Tree }.
+    {ok, #cons{ id_assign = Tree }}.
 
 handle_message (_From, _Msg, Cons = #cons{ decided=true }) ->
     % Ignoring everything, I've decided.
@@ -67,11 +65,7 @@ handle_message (keeper, start, Cons = #cons{ phase=0 }) ->
 handle_message (faildet, {born, _BornList, NAlive}, Cons = #cons{}) ->
     % When the Failure-Detector signals some born node, the number of alive
     % peers must be updated.
-    NewCons = Cons#cons{ nalive=NAlive },
-    case NewCons#cons.phase of
-        2 -> agreement(NewCons);
-        _ -> {ok, NewCons}
-    end;
+    Cons#cons{ nalive=NAlive };
 
 handle_message (faildet, {dead, DeadList, NAlive}, Cons = #cons{}) ->
     % When the Failure-Detector signals some dead node, the number of
@@ -83,9 +77,6 @@ handle_message (faildet, {dead, DeadList, NAlive}, Cons = #cons{}) ->
         {1, true} ->
             log_serv:log("Coordinator is dead"),
             run_phase2(NewCons#cons{ est_from_c='?' });
-        {2, _} ->
-            log_serv:log("Trying agreement"),
-            agreement(NewCons);
         _ ->
             {ok, NewCons}
     end;
@@ -118,15 +109,18 @@ handle_message (From, {decide, Value}, Cons = #cons{}) ->
             {ok, Cons#cons{ decided=true }}
     end.
 
+% Ignored events
 handle_info (_Info, Cons = #cons{}) -> {ok, Cons}.
 handle_beacon (Cons = #cons{}) -> {ok, Cons}.
 handle_introduction (_From, _Pid, Cons) -> {ok, Cons}.
 
 random_estimate () ->
-    % Decide true or false with same probability.
+    % Toss a coin, decide true or false with same probability.
     random:uniform() < 0.5.
 
 is_coordinator_dead (Cons, DeadList) ->
+    % Check whether the coordinator, according to the current round, is
+    % dead or alive. Requires the list provided by the Failure Detector.
     Self = self(),
     case get_coordinator(Cons) of
         {_, Self} ->
@@ -151,6 +145,9 @@ run_phase2 (Cons = #cons{ est_from_c=E }) ->
     {ok, NewCons}.
 
 agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, id_assign=Ids }) ->
+    % The agreement phase: check whether we reached the target number of
+    % proposal, decide if this is the case and all the nodes required
+    % selected the value.
     N = gb_trees:size(Ids),
     Target = trunc(N/2) + 1,
     case gb_sets:size(Prop) of
@@ -200,7 +197,8 @@ run_round (Cons = #cons{ est=Est }) ->
                     end,
                 log_serv:log("Coordinator started with est=~p",
                              [Est_c]),
-                gfd_api:cons_bcast({est_c, Est_c});
+                gfd_api:cons_bcast({est_c, Est_c}),
+                Est_c;
             _ ->
                 Est
         end,
