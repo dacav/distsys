@@ -85,7 +85,7 @@ where the value \emph{1} declares the \emph{arity} of the function
 \subsection{About \OTP}
 
 The language provides a concept named \Keyword{behaviors}. It resembles the
-semantics of \emph{class} in \Tech{Haskell}, and the semantics of
+semantics of \emph{class} in \Tech{Haskell}, or the semantics of
 \emph{interface} in \Tech{Java}: a module declaring a certain
 \Keyword{behavior} is forced to provide a set of the callback functions,
 which can be called by external modules.
@@ -129,18 +129,16 @@ component}. This is valid for \Const{supervisor} as well, thus a
 
 \begin{itemize}
 
-    \item   The callbacks for \Keyword{behaviors} of \OTP\ library usually
-            are required to return a tuple of the form \RetOK{Status} or
-            \RetErr{Reason}, where \RetErr{ok}, \Const{error} are
-            \emph{atoms}, while \Const{Status} and \Const{Reason} are
-            respectively the private data of the \Keyword{specific
-            component} and the reason which caused the error.
+    \item   The callbacks for \Keyword{behaviors} of \OTP\ library are
+            usually required to return a tuple of the form \RetOK{Status}
+            or \RetErr{Reason}, where \Const{ok} and \Const{error} are
+            \emph{atoms}, while \Const{Status} is the private data of the
+            \Keyword{specific component} (parameter for the next callback)
+            and \Const{Reason} is the reason which caused the error.
 
-    \item   Except for \Const{init} The last formal parameter of all
+    \item   Except for \Const{init}, the last formal parameter of all
             \Keyword{specific component} callbacks is conventionally
-            dedicated to the afore mentioned private date, namely any
-            valid \Erlang\ object which keeps the status.
-
+            bound to the afore mentioned private data.
 \end{itemize}
 
 Those conventions are followed by my program as well.

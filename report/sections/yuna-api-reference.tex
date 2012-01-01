@@ -1,7 +1,7 @@
 Before reading this, please read \Section{sec:erlang-and-otp}.
 \Paragraph{subsub:CodingConventions} gives order to get an overview on
-coding conventions: the last parameter of all events is the \emph{status}
-of the running logic.
+coding conventions: the last parameter of all \emph{events} is the
+\emph{status} of the running logic.
 
 \subsection{The \Keyword{keeper} \Acr{API}}
 
@@ -58,7 +58,7 @@ of the running logic.
                 \Func{handle_introduction}{3} callback. The message
                 (second parameter) is supposed to be understood by the
                 \Keyword{specific peer}, which will see the \emph{atom}
-                \Keyword{keeper} as sender;
+                \Const{keeper} as sender;
 
             \item \Func{send}{3} \\
                 This function is the same as \Func{send}{2}, except it has
@@ -72,7 +72,7 @@ of the running logic.
                 first parameter. The peer will be introduced to the peer
                 specified as second parameter. The sender of the
                 introduction message will be the \emph{atom}
-                \Keyword{keeper};
+                \Const{keeper};
 
             \item \Func{introduce}{3} \\
                 This function is the same as \Func{introduce}{2}, except
@@ -92,13 +92,40 @@ of the running logic.
 
             \end{itemize}
 
-        \item   \Const{keeper\_proto}
+        \item   \Const{keeper_proto}
 
             \begin{itemize}
-            \item \Func{add_peers}{3}
-            \item \Func{add_peers_pidonly}{3}
-            \item \Func{enable_beacon}{1}
-            \item \Func{disable_beacon}{0}
+            \item \Func{add_peers}{3} \\
+                Insert new nodes in the \Const{peers}
+                \Keyword{supervisor}. The parameters are the number $N$ of
+                nodes to spawn, an \emph{atom} giving the name of the
+                \Keyword{specific component} which implements the peer
+                logic, and finally the parameter for the logic (which will
+                be passed as first parameter for the \Func{init}{1}
+                function of the specified module). \\
+                Note that this function can be called multiple times,
+                adding new nodes to the running protocol. The nodes can be
+                added at any time, and may possibly correspond to
+                different \Keyword{specific components}. \\
+                The function yields a list of tuples \Const{\{Pid, Ref\}},
+                where \Const{Pid} is the process identifier of the spawned
+                process, and \Const{Ref} is the reference of an
+                \emph{\Erlang\ monitor}, which can be used to match the
+                second parameter of the \Func{handle_term_nofity}{4}
+                event;
+
+            \item \Func{add_peers_pidonly}{3} \\
+                Same as \Func{add_peers}{3}, just returns a list of
+                process identifiers, discarding \emph{references};
+
+            \item \Func{enable_beacon}{1} \\
+                Require the \Const{bcast} component to send periodically a
+                beacon to the subscribers. The parameter to be provided is
+                the beacon period (in milliseconds);
+
+            \item \Func{disable_beacon}{0} \\
+                Disable the beacon enabled with \Func{enable_beacon}{0}.
+
             \end{itemize}
 
         \end{enumerate}
@@ -108,10 +135,39 @@ of the running logic.
     \subsubsection{Events and callbacks}
         \begin{itemize}
         \item \Func{init}{1}
-        \item \Func{handle_message}{3}
-        \item \Func{handle_introduction}{3}
-        \item \Func{handle_beacon}{1}
-        \item \Func{handle_info}{2}
+            This event is provided with an extern parameter,
+            corresponding to the last parameter of the
+            \Func{keeper_proto:add_peers}{3} function.  It is supposed to
+            do some initialization dependent on the \Keyword{specific
+            component} implementing the peer.  It can return
+            \RetOK{Status} in case of success or \RetErr{Reason} in
+            case of failure;
+
+        \item \Func{handle_message}{3} \\
+            This event is called when the \Keyword{generic component} is
+            messaged with a valid message. The first parameter corresponds
+            to the process identifier of the sender or to the \emph{atom}
+            \Const{keeper} if the message has been send by the
+            \Keyword{keeper} through the \Func{keeper_inject:send}{2}
+
+        \item \Func{handle_introduction}{3} \\
+            This event is triggered when the \Keyword{peer}
+            has been introduced to another \Keyword{peer}. As this
+            introduction can be done both by the \Keyword{keeper} or by
+            another \Keyword{peer}, the first argument can be either the
+            \Const{keeper} \emph{atom} or a \emph{pid}.
+
+        \item \Func{handle_beacon}{1} \\
+            If the \Keyword{keeper} enables the beacon (trough the
+            \Func{keeper_proto:enable_beacon}{1} function), this event
+            will be called periodically.
+
+        \item \Func{handle_info}{2} \\
+             If the \Keyword{abstract component} gets some raw message, not
+            appropriately enveloped with the underlaying protocol, the
+            \Keyword{peer} gets notified through this event. The first
+            parameter is, of course, the raw packet.
+
         \end{itemize}
 
     \subsubsection{Library functions}
@@ -119,18 +175,46 @@ of the running logic.
         \begin{enumerate}
             \item   \Const{peer\_chan}
                 \begin{itemize}
-                \item \Func{send}{2}
-                \item \Func{greet}{1}
-                \item \Func{bcast_send}{1}
-                \item \Func{bcast_greet}{0}
+                \item \Func{send}{2} \\
+                    Send a message through the internal protocol. The
+                    first parameter is the \emph{pid} of the target
+                    process, the second is the message;
+
+                \item \Func{greet}{1} \\
+                    Greet a \Keyword{peer} by raising its
+                    \Func{handle_introduction}{3} event. The first
+                    parameter is the \emph{pid} of the target process;
+
+                \item \Func{bcast_send}{1} \\
+                    Broadcast a message through the internal protocol. The
+                    parameter is the message to broadcast;
+
+                \item \Func{bcast_greet}{0} \\
+                    Greet all \Keyword{peers}, in broadcast, raising their
+                    \Func{handle_introduction}{3} event.
+
                 \end{itemize}
 
             \item   \Const{peer\_ctrl}
                 \begin{itemize}
-                \item \Func{notify_spawn}{0}
-                \item \Func{notify_result}{1}
-                \item \Func{notify_term}{1}
-                \item \Func{notify_term}{0}
+                \item \Func{notify_spawn}{0} \\
+                    Notify the \Keyword{keeper} about a successfull
+                    spawning (see the \Func{handle_spawn_notify}{2}
+                    event)
+
+                \item \Func{notify_result}{1} \\
+                    Notify the \Keyword{keeper} about a result
+                    (see the \Func{handle_result_notify}{3});
+
+                \item \Func{notify_term}{1} \\
+                    Notify the \Keyword{keeper} about process termination.
+                    Note that, as this function is used internally
+                    already, there's no need to use it explicitly
+                    (see the \Func{handle_term_notify}{4});
+
+                \item \Func{notify_term}{0} \\
+                    As \Const{notify_term(normal)}.
+
                 \end{itemize}
         \end{enumerate}
 

@@ -1,5 +1,3 @@
-\subsection{The Consensus Problem}
-
 The \emph{Consensus problem} is a well-known abstract problem concerning
 \emph{distributed systems}: many important results relay on it, and many
 algorithms solving it are available.
@@ -10,26 +8,21 @@ A correct run of a \emph{Consensus algorithms} requires the
 decision can be generalized by the choice of a value for a truth
 assignment.
 
-
-\subsection{The implementation} \label{sub:TheImplementation}
-
-The \YUNA\ project implements one of the many available algorithms for
-solving the \emph{Consensus problem}, also providing a well designed and
-configurable environment which follows the typical assumptions we can find
-in literature.
-
-The program is written in \Erlang\ (\Web{http://erlang.org}), a functional
+The \YUNA\ project implements a well designed and configurable environment
+which follows the typical assumptions we can find in literature. The
+program is written in \Erlang\ (\Web{http://erlang.org}), a functional
 programming language developed by \Tech{Ericsson}, which is oriented to
 concurrent software. It is particularly well-suited for \emph{highly
 reliable systems}.
 
-Among the available algorithms, I chose the one proposed by Mostefaoui and
-Raynal \cite{bib:Cons}, which requires to be equipped with a \emph{Failure
-Detector} to be accessed as oracle. With regard to the oracle, I chose the
-basic version of the Failure Detector Protocol, as proposed by Robbert van
-Renesse, Yaron Minsky, and Mark Hayden \cite{bib:FD}. The implementation
-is based on a failure detector of class $\diamond S$ (\emph{Eventually
-Correct}) \cite{bib:QualityFD}.
+On top of \YUNA\ I implemented one of the many available algorithms for
+solving the \emph{Consensus problem}, namely the one proposed by Mostefaoui and
+Raynal \cite{bib:Cons}. As this algorithm requires to be equipped with a
+\emph{Failure Detector}, I also implemented the basic version of the
+Failure Detector Protocol, as proposed by Robbert van Renesse, Yaron
+Minsky, and Mark Hayden \cite{bib:FD}. The implementation is based on a
+failure detector of class $\diamond S$ (\emph{Eventually Correct})
+\cite{bib:QualityFD}.
 
 \subsection{Contents of this document}
 

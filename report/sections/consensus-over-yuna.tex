@@ -1,10 +1,12 @@
+\subsection{Organization of the Algorithm}
+
 The \PathSrc{protocols} directory is thought to contain the actual
 distributed protocols written by using the \YUNA\ facility. The project
 comes with a very simple testing application (\PathSrc{protocols/test}
 directory) and, of course, with an implementation of the \emph{consensus
 algorithm} (\PathSrc{protocols/consensus-gossip-fd} directory).
 
-As mentioned in \Subsection{sub:TheImplementation}, the implemented
+As mentioned in \Section{sec:Introduction}, the implemented
 algorithm is split into two parts:
 \begin{itemize}
 
@@ -16,7 +18,7 @@ algorithm is split into two parts:
 \YUNA\ provides an \Keyword{abstract component} for the nodes of a
 distributed system. Both parts are implemented as \Keyword{specific
 component}, since both of them can be modelled with the same event
-interface; so far, each node is an instance of the following structure:
+interface; so far each node is an instance of the following structure:
 \begin{itemize}
 
     \item   A proxy object (\Path{gfd\_peer.erl}) is directly interfaced
@@ -51,11 +53,15 @@ interface; so far, each node is an instance of the following structure:
 handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
     case faildet:handle_message(From, Msg, FD) of
         {ok, NewFD} ->
+            % We had no errors, update the status with the updated Failure
+            % detector;
             NewStatus = Status#status {
                 fd=NewFD
             },
             {ok, NewStatus};
-        Error -> Error
+        Error ->
+            % If we had some error, we propagate it outside the function
+            Error
     end;
             \end{lstlisting}
             \end{figure}
@@ -77,13 +83,13 @@ handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
 
         \item   When new nodes are discovered, the \emph{Consensus
                 Algorithm} is notified through a message (by using the
-                \Func{consensus:handle_message} callback), and provided
+                \Func{consensus:handle_message}{3} callback), and provided
                 with the list of discovered nodes plus the updated number
                 of alive nodes;
 
         \item   When known nodes are \emph{suspected}, the \emph{Consensus
                 Algorithm} is notified through the
-                \Func{consensus:handle_message} callback, and provided
+                \Func{consensus:handle_message}{3} callback, and provided
                 with the list of suspected nodes plus the updated number
                 of alive nodes (note that this is very important, as the
                 \emph{Consensus Algorithm} must be aware of the current
@@ -103,15 +109,22 @@ handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
                                label={code:FromFaildet}]
 handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
     try
+        % The beacon may either update the Failure Detector (if some
+        % node turns into suspected) or make it go in a wrong state.
         NewFD =
             case faildet:handle_beacon(FD) of
                 {ok, FD0} -> FD0;
-                E0 -> throw(E0)
+                E0 -> throw(E0)             % Terminate immediately.
             end,
         NewCons =
             case faildet:get_last_dead(NewFD) of
-                [] -> Cons;
+                [] ->
+                    % In case we don't have dead nodes the consensus
+                    % algorithm keeps the current state.
+                    Cons;
                 Dead ->
+                    % Else the algorithm is notified about which nodes are
+                    % suspected.
                     NAlive = element(1, faildet:get_neighbors(NewFD)),
                     Msg = {dead, Dead, NAlive},
                     case consensus:handle_message(faildet, Msg, Cons) of
@@ -119,6 +132,7 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
                         E1 -> throw(E1)
                     end
             end,
+        % Updated versions of the internal status are returned
         Status#status {
             fd=NewFD,
             cons=NewCons
@@ -126,10 +140,200 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
     of
         S -> {ok, S}
     catch
+        % Any throwed error will be in the form {error, WhatHappened}
         thorw:E -> E
     end.
             \end{lstlisting}
             \end{figure}
- 
+
 \end{itemize}
+
+
+\subsection{Implementation}
+
+As the program interface is \emph{event driven}, the algorithm as
+presented in the paper has been split and distributed among the callbacks,
+however it keeps its basic behavior. The algorithm life cycle is the
+following:
+
+\subsubsection{Initialization phase}
+
+When the algorithm is initialized (\Listing{code:ConsInit}), it's provided
+with the \emph{ID} assignment for the next rounds. This value is provided
+as list of pairs \Const{\{Id, Pid\}}, where \Const{Id} is a numeric value
+and \Const{Pid} is a process identifier.
+
+Note that the assignment tells nothing about which process is alive and
+which is dead. This information comes from the \emph{Failure Detector}.
+
+After the initialization phase, each \Keyword{node} waits for the startup
+signal from the \Keyword{keeper}. This triggers the \emph{startup phase}
+(described in \Paragraph{subsub:ConsStartup}).
+
+\begin{figure}[hbt]
+\begin{lstlisting}[caption={initialization phase},
+                   label={code:ConsInit}]
+init (IdAssignment) ->
+    Tree = lists:foldl(fun ({I,P}, T) -> gb_trees:insert(I, P, T) end,
+                       gb_trees:empty(), IdAssignment),
+    {ok, #cons{ id_assign = Tree }}.
+\end{lstlisting}
+\end{figure}
+
+\subsubsection{Startup phase} \label{subsub:ConsStartup}
+
+The startup phase behavior (\Listing{code:ConsStartup}) depends on the
+role of the node. If the node is a coordinator, then the value to be
+decided is chosen randomly, otherwise we don't change anything and we go
+to the \emph{estimation phase} (described in
+\Paragraph{subsub:ConsEstimation}).
+
+\begin{figure}[hbt]
+\begin{lstlisting}[caption={Startup phase},
+                   label={code:ConsStartup}]
+handle_message (keeper, start, Cons = #cons{ phase=0 }) ->
+    % Happening only when we are in phase 0.
+    run_round(Cons);
+
+...
+...
+
+run_round (Cons = #cons{ est=Est }) ->
+    % If a node recognizes itself as the coordinator, the estimated decision value is broadcasted. If the value has not been estimated yet, it's created randomly.
+    Self = self(),
+    NewEst =
+        case get_coordinator(Cons) of
+            {_, Self} ->
+                % I am the coordinator.
+                Est_c =
+                    % If we don't have an estimation, take one randomly, else propagate the one we have.
+                    case Est of
+                        '?' -> random_estimate();
+                        _ -> Est
+                    end,
+                log_serv:log("Coordinator started with est=~p",
+                             [Est_c]),
+                % Broadcast to all nodes, talk directly with their consensus algorithm
+                gfd_api:cons_bcast({est_c, Est_c}),
+                % Update value for estimation
+                Est_c;
+            _ ->
+                % Estimation doesn't change.
+                Est
+        end,
+    NewCons = Cons#cons {
+        est=NewEst,     % Updated estimation
+        phase=1         % We go to phase 1
+    },
+    {ok, NewCons}.
+\end{lstlisting}
+\end{figure}
+
+\subsubsection{Estimation phase} \label{subsub:ConsEstimation}
+
+The estimation phase (\Listing{code:ConsEstimation}) consists in listening
+for events. Two kind of events are significative: the suspiction (from the
+\emph{Failure Detector}) of \emph{coordinator death}, or the obtained
+message indicating an estimation. This message may be propagated by the
+coordinator itself or by any neighbor which obtained it transitively.
+
+At this point the node may have an estimation of the value or it may not
+know any estimated value $v$. In both cases the node broadcast a message
+in the form \Const{\{phase2, E\}}, where \Const{E} may be the value $v$ or
+the \emph{atom} \Const{'?'}. After this, the algorithms moves to the
+\emph{agreement phase} (described in \Paragraph{subsub:ConsAgreement}).
+
+\begin{figure}[hbt]
+\begin{lstlisting}[caption={Estimation phase},
+                   label={code:ConsEstimation}]
+handle_message (_From, {est_c, Est_c}, Cons = #cons{ phase=1 }) ->
+    % The massage from current coordinator (either direct or propagated by other nodes) moves us to phase 2
+    log_serv:log("Got estimation: ~p", [Est_c]),
+    run_phase2(Cons#cons{ est_from_c=Est_c });
+
+handle_message (faildet, {dead, DeadList, NAlive}, Cons = #cons{}) ->
+    % When the Failure-Detector signals some dead node, the number of alive peers must be updated
+    NewCons = Cons#cons{ nalive=NAlive },
+    case {NewCons#cons.phase, is_coordinator_dead(NewCons, DeadList)} of
+        {1, true} ->
+            % We are in phase 1 and the coordinator is dead. Go to phase 2 and set the estimate to '?'.
+            log_serv:log("Coordinator is dead"),
+            run_phase2(NewCons#cons{ est_from_c='?' });
+        _ ->
+            {ok, NewCons}
+    end;
+
+...
+...
+
+run_phase2 (Cons = #cons{ est_from_c=E }) ->
+    gfd_api:cons_bcast({phase2, E}),
+    NewCons = Cons#cons {
+        phase=2,    % Entering phase 2
+        rec=ordsets:new(),
+        prop=gb_sets:new()
+    },
+    {ok, NewCons}.
+\end{lstlisting}
+\end{figure}
+
+\subsubsection{Agreement phase} \label{subsub:ConsAgreement}
+
+This phase (shown in \Listing{code:ConsAgreement}), requires at least
+$\left\lfloor n/2 \right\rfloor + 1$ different nodes to be producing, as
+last part of the \emph{estimation phase}, the same proposed value. Such a
+value is read from a message in the form \Const{\{phase2, E\}} where
+either \Const{E} = $v$ or \Const{E} = \Const{'?'}.
+
+If all the received message have the same value, the \emph{consensus} is
+achieved correctly.
+
+\begin{figure}[hbt]
+\begin{lstlisting}[caption={Agreement Phase},
+                   label={code:ConsAgreement}]
+handle_message (From, {phase2, E},
+                Cons = #cons{ phase=Phase, rec=Rec, prop=Prop }) ->
+    case Phase of
+        2 ->
+            NewCons0 = Cons#cons {
+                rec=ordsets:add_element(E, Rec),
+                prop=gb_sets:add_element(From, Prop)
+            },
+            agreement(NewCons0);
+        _ ->
+            {ok, Cons}
+    end;
+
+...
+...
+
+agreement (Cons=#cons{ phase=2, rec=Rec, prop=Prop, id_assign=Ids }) ->
+    % The agreement phase: check whether we reached the target number of
+    % proposal, decide if this is the case and all the nodes required
+    % selected the value.
+    N = gb_trees:size(Ids),
+    Target = trunc(N/2) + 1,
+    case gb_sets:size(Prop) of
+        M when M < Target ->
+            {ok, Cons};
+        M ->
+            log_serv:log("Heard enough peers: ~p/~p; deciding", [M, N]),
+            case Rec of
+                ['?'] ->
+                    log_serv:log("Next round"),
+                    run_next_round(Cons);
+                [V] when V =/= '?' ->
+                    % Decide
+                    gfd_api:cons_decide(V),
+                    {ok, Cons#cons{ decided=true }};
+                ['?', V] ->
+                    log_serv:log("Next round with value"),
+                    run_next_round(Cons#cons{ est=V });
+                _ ->
+                    log_serv:log("Y U No Agree? Rec=~p", [Rec]),
+                    {error, yuna}
+            end
+    end.
+\end{lstlisting}
+\end{figure}
 

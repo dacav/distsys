@@ -1,0 +1,5 @@
+\subsection{Distinguis among peers logic} \label{sub:DistinguishAmongPeersLogic}
+
+As explained in the \Acr{API} reference (\see{\Section{yuna-api-reference}}), the spawning of a new node with the
+\Func{keeper_proto:add_peers}{3} function will return a list of pairs \Const{\{Pid, Ref\}}. The \Const{Ref} object is an
+\emph{erlang reference}, and can be matched against
