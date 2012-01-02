@@ -3,7 +3,9 @@ Before reading this, please read \Section{sec:erlang-and-otp}.
 coding conventions: the last parameter of all \emph{events} is the
 \emph{status} of the running logic.
 
+% -----------------------------------------------------------------------
 \subsection{The \Keyword{keeper} \Acr{API}}
+% -----------------------------------------------------------------------
 
     \subsubsection{Events and callbacks}
 
@@ -130,7 +132,9 @@ coding conventions: the last parameter of all \emph{events} is the
 
         \end{enumerate}
 
+% -----------------------------------------------------------------------
 \subsection{The \Keyword{peer} \Acr{API}}
+% -----------------------------------------------------------------------
 
     \subsubsection{Events and callbacks}
         \begin{itemize}
@@ -218,6 +222,169 @@ coding conventions: the last parameter of all \emph{events} is the
                 \end{itemize}
         \end{enumerate}
 
+
+% -----------------------------------------------------------------------
 \subsection{The configuration file} \label{sub:ConfigurationFile}
+% -----------------------------------------------------------------------
+
+\subsubsection{\YUNA\ Application Parameters}
+
+Basing on the \Erlang\ coding standards, the configuration of the
+application is placed in a file named \Path{ebin/$A$.app}, where $A$ is
+the name of the application. In our case the file is \Path{ebin/yuna.app},
+shown in \Listing{code:ConfFile}.
+
+\begin{figure}[hbt]
+\begin{lstlisting}[label={code:ConfFile},
+                   caption={default configuration file}]
+{application, yuna, [
+    {description, "YUNA - Distributed Consensus implementation"},
+    {vsn, "0.0.1"},
+    {modules, [chan_filters, tweaked_chan, bcast, peers, keeper_proto,
+               keeper_inject, yuna, gen_peer, gen_keeper, peer_chan,
+               peer_ctrl, main, log_serv, randel, utils, services]}
+    {registered, []},
+    {application, [kernel, stdlib]},
+    {mod, {yuna, []}},
+
+    {env, [
+        % Default configuration, can be overriden by configuration file.
+        {faulty_prob, 0.01},        % 1% of nodes are faulty
+        {faulty_fail_prob, 0.05},   % 5% crash probab. for faulty node
+
+        {deliver_mindel, 500},      % Minimum deliver delay
+        {deliver_maxdel, 1500},     % Maximum deliver delay
+        {deliver_dist, {random, uniform, []}},  % Delay distribution
+
+        {log_args, { standard_error,    % For visual logging
+                     "statfile"         % For stats retrival
+                   }
+        },
+        {keeper, gfd_keeper},
+        {keeper_args, { {10, 20, 4},     % TFail, TCleanup, TGossip
+                        500,            % NPeers
+                        0.01,           % StatPeers [ratio]
+                        500,            % TBeacon, [ms]
+                        120             % BeaconWait, [TBeacon]
+                        % 120 beacons = 1 min
+                      }
+        }
+    ]}
+]}.
+\end{lstlisting}
+\end{figure}
+
+The first chunk of the file describes the application details (giving
+the name of the application, the version number and so on), while the
+remaining part of the file contains the environment definition as
+\emph{key-value} mapping. The accepted format matches the following
+pattern:
+
+\begin{quote}
+\centering
+\Const{\{env, [\{K1, V1\}, \{K2, V2\} ... \{Kn, Vn\}]\}}
+\end{quote}
+
+\subsubsection{\YUNA\ Application Parameters} \label{subsub:YUNAParams}
+
+\begin{description}
+
+    \item[Failure probability]:
+        as explained in section \Subsection{sub:TheCommunicationSystem},
+        each node fails with a certain probability \PCrash\ during a
+        message transmission. Initially this was designed as an event
+        concerning only a fixed set of processes, then I decided to make
+        all nodes equally vulnerable to random crashes (this is more
+        realistic).
+
+        This choice may be changed in future, but for the moment
+        $\PCrash = \PrName{faulty} \cdot \PrName{fc}$, and those
+        parameters are read from the configuration file:
+
+    \begin{itemize}
+
+        \item   Probability of having a faulty node \PrName{faulty}
+                (\Const{faulty_prob} key), must be a value $0 \leq p \leq
+                1$);
+
+        \item   Probability, for a faulty node, of fail during a
+                transmission \PrName{fc} (\Const{faulty_fail_prob} key),
+                must be a value $0 \leq p \leq 1$.
+
+    \end{itemize}
 
 
+    \item[Random delivery delay]:
+        as explained in section \Subsection{sub:TheCommunicationSystem},
+        the communication can be delayed randomly. The parameters required
+        for this functionality are the following:
+
+    \begin{itemize}
+        \item   The minimum delay (\Const{deliver_mindel} key), expressed
+                in milliseconds;
+
+        \item   The maximum delay (\Const{deliver_maxdel} key), expressed
+                in milliseconds;
+
+        \item   The probability distribution of the delay
+                (\Const{deliver_dist} key), must be a distribution taking
+                values in the interval $[0, 1]$. It is specified as an
+                \Erlang\ \emph{tuple} \Const{\{M, F, A\}} providing the
+                coordinates (\emph{module}, \emph{function name} and
+                \emph{arguments}) of the function. Using \Const{\{random,
+                uniform, []\}}, for instance, we obtain a time interval
+                uniformly distributed between \Const{deliver_mindel} and
+                \Const{deliver_maxdel}.
+
+    \end{itemize}
+
+    \item[Logger parameters] (\Const{log_args} key): only one parameter is
+        required, namely a tuple \Const{\{Stream, NamePrefix\}}, where
+        \Const{Stream} is a file descriptor (like \Const{standard_error},
+        which is the default), and \Const{NamePrefix} is a string giving
+        the prefix for the logger output file names
+        (\see{\Subsection{sub:YunaOverview}});
+
+    \item[Keeper parametrization and selection]:
+    \begin{itemize}
+        \item   The \Const{keeper} key must be associated with an
+                \emph{atom} declaring the name of the \Keyword{specific
+                componet} to be used as \Keyword{keeper};
+        
+        \item   The \Const{keeper_args} key can be associated to any
+                \Erlang\ item, which will be the actual parameter for the
+                \Func{init}{1} function of the \Keyword{specific keeper}.
+    \end{itemize}
+
+\end{description}
+
+\subsubsection{Parameters for Consensus}
+
+    The \Keyword{specific keeper} for the implemented \emph{Consensus}
+    algorithm accepts as parameter a \emph{tuple} of the form
+    \begin{quote}
+    \Const{\{PeerParams, NPeers, StatPeers, TBeacon, BeaconWait\}}
+    \end{quote}
+    where
+    \begin{itemize}
+    \item   \Const{PeerParams} contains the parameters for the processes
+            which will run the \emph{Consensus} algorithm;
+    \item   \Const{NPeers} is the number of processes running the
+            algorithm;
+    \item   \Const{StatPeers} is the ratio $r \in [0, 1]$ of process which
+            will report statistics (this is useful since allows to tune
+            the better trade-off between statistics significance and
+            overhead)
+    \item   \Const{TBeacon} is the beacon time period (expressed in
+            milliseconds).
+    \end{itemize}
+
+    The \Const{PeerParams} is required to be a tuple of the form
+    \begin{quote}
+    \Const{\{TFail, TCleanup, TGossip\}}
+    \end{quote}
+    All three values are length of time periods, so far they are expressed
+    in milliseconds. They correspond to the parameters of the implemented
+    \emph{Failure Detector} algorithm (\see{the original
+    paper\cite{bib:FD}}).
+ 

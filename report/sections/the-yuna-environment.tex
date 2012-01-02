@@ -1,5 +1,5 @@
 % -----------------------------------------------------------------------
-\subsection{Overview}
+\subsection{Overview} \label{sub:YunaOverview}
 % -----------------------------------------------------------------------
 
 \YUNA\ is a \OTP-compliant \Keyword{application}. It defines the hierarchy
@@ -30,6 +30,7 @@ are:
 \item   \Const{logger} (file \PathSrc{infrastructure/log\_serv.erl})
         which provides a simple \Acr{API} for logging events and
         collecting statistics:
+
     \begin{itemize}
 
     \item   It implements an \OTP\ \Const{gen\_server};
@@ -40,6 +41,24 @@ are:
 
     \item   In order to reduce the logging overhead, calls to the logger
             are asynchronous
+
+    \item   It supports many different calls for collecting statistics and
+            signaling events, producing some output files which can be
+            elaborated by the \emph{GNUplot} software. The files are:
+        \begin{itemize}
+        \item   \Path{\emph{prefix}\_node\_count} (trace
+                the number of nodes in time);
+        \item   \Path{\emph{prefix}\_est\_node\_count}
+                (trace the approximated number of nodes seen by a subset
+                of the running failure detectors in time);
+        \item   \Path{\emph{prefix}\_decision\_count}
+                (trace the number of nodes which decided some value in
+                time);
+        \item   \Path{\emph{prefix}\_events} (events to
+                be shown in the time diagram).
+        \end{itemize}
+            where \emph{prefix} is a string depending on
+            the configuration file (\see{\Paragraph{subsub:YUNAParams}}).
 
     \end{itemize}
 
@@ -107,7 +126,7 @@ dynamically child specifications to the \Const{peers} \OTP\
 
 
 % -----------------------------------------------------------------------
-\subsection{The communication system}
+\subsection{The communication system} \label{sub:TheCommunicationSystem}
 % -----------------------------------------------------------------------
 
 Many theoretical problem concerning distributed systems are based on some
@@ -149,7 +168,12 @@ justified by the facts that:
 
 \end{itemize}
 
-Both the random delay distribution and the \PCrash\ are provided
-as parameter in the configuration file
+Of course this functionality is active only for \Keyword{peers} sending
+data to other peers or in broadcast: there's no point in making the
+\Keyword{keeper} or one of the internal service crash. Note also that,
+in case of broadcasting, the failure probability is \PCrash, as for
+unicast messages.
+
+The parameters are provided as parameter in the configuration file
 (\see{\Subsection{sub:ConfigurationFile}}).
 
