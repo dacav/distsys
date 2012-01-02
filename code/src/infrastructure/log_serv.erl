@@ -1,7 +1,7 @@
 -module(log_serv).
 -author("Giovanni Simoni").
 -export([start/2, start_link/2, log/1, log/2,
-         node_count/1, est_node_count/1, decision_count/1]).
+         node_count/1, est_node_count/1, decision_count/1, event/1]).
 
 -behavior(gen_server).
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2,
@@ -17,7 +17,8 @@
 -record(statfiles, {
         node,
         est_node,
-        decision
+        decision,
+        events
     }
 ).
 
@@ -61,6 +62,7 @@ get_descriptor (SFDs, Class) ->
         node -> SFDs#statfiles.node;
         est_node -> SFDs#statfiles.est_node;
         decision -> SFDs#statfiles.decision;
+        events -> SFDs#statfiles.events;
         _ -> erlang:error(no_class, [SFDs, Class])
     end.
 
@@ -70,7 +72,8 @@ init ({OutFile, StatFN}) ->
     StatFiles = #statfiles{
         node=openfile(StatFN, node_count, OutFile),
         est_node=openfile(StatFN, est_node_count, OutFile),
-        decision=openfile(StatFN, decision_count, OutFile)
+        decision=openfile(StatFN, decision_count, OutFile),
+        events=openfile(StatFN, events, none)
     },
     Start = now_millisec(),
     {ok, #loginfo{ outfile=OutFile,
@@ -109,6 +112,16 @@ handle_cast ({stat, Class, N}, Status = #loginfo{ statfds=SFDs }) ->
     T = timediff(Status),
     FD = get_descriptor(SFDs, Class),
     io:format(FD, "~p ~p\n", [T, N]),
+    {noreply, Status};
+
+handle_cast ({event, Name}, Status = #loginfo{ statfds=SFDs }) ->
+    T = timediff(Status),
+    case get_descriptor(SFDs, events) of
+        none -> ok;
+        FD ->
+            io:format(FD, "set arrow from ~p,0 to ~p,1000 nohead\n", [T, T]),
+            io:format(FD, "set label \"~s\" at ~p,0 center\n", [Name, T])
+    end,
     {noreply, Status}.
 
 start (OutFile, StatFN) ->
@@ -133,3 +146,6 @@ est_node_count (N) ->
 
 decision_count (N) ->
     gen_server:cast(?MODULE, {stat, decision, N}).
+
+event (Name) ->
+    gen_server:cast(?MODULE, {event, Name}).

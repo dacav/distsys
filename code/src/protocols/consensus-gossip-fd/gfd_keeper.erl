@@ -120,7 +120,7 @@ check_result (Status = #status{ alive=Alive, result=Result, npeers=N }) ->
                                  [Val, Count])
                 end,
             stop_protocol(Status),
-            log_serv:log("Consensus (should has been) reached:"),
+            log_serv:log("Consensus (should) has been reached:"),
             lists:foreach(LogResult, result:stats(Result)),
             log_serv:log("Killing remaining processes..."),
             killall(gb_sets:to_list(Alive)),
@@ -132,9 +132,11 @@ check_result (Status = #status{ alive=Alive, result=Result, npeers=N }) ->
 
 stop_protocol (Status) ->
     keeper_proto:disable_beacon(),
+    log_serv:event("stop protocol"),
     Status.
 
 start_protocol (Status) ->
+    log_serv:event("start protocol"),
     keeper_inject:bcast({cons, start}),
     Status.
 
