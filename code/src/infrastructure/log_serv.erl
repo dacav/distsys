@@ -1,6 +1,6 @@
 -module(log_serv).
 -author("Giovanni Simoni").
--export([start/2, start_link/2, log/1, log/2,
+-export([start/2, start_link/2, log/1, log/2, sync/0,
          node_count/1, est_node_count/1, decision_count/1, event/1]).
 
 -behavior(gen_server).
@@ -28,9 +28,6 @@
 
 code_change (_, State, _) ->
     {ok, State}.
-
-handle_call (_, _, State) ->
-    {reply, ok, State}.
 
 handle_info (_, State) ->
     {noreply, State}.
@@ -120,9 +117,12 @@ handle_cast ({event, Name}, Status = #loginfo{ statfds=SFDs }) ->
         none -> ok;
         FD ->
             io:format(FD, "set arrow from ~p,0 to ~p,1000 nohead\n", [T, T]),
-            io:format(FD, "set label \"~s\" at ~p,0 center\n", [Name, T])
+            io:format(FD, "set label \"~s\" at ~p,0 rotate left\n", [Name, T])
     end,
     {noreply, Status}.
+
+handle_call (flush, _, State) ->
+    {reply, ok, State}.
 
 start (OutFile, StatFN) ->
     gen_server:start({local, ?MODULE}, ?MODULE,
@@ -149,3 +149,6 @@ decision_count (N) ->
 
 event (Name) ->
     gen_server:cast(?MODULE, {event, Name}).
+
+sync () ->
+    gen_server:call(?MODULE, flush).
