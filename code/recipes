@@ -1,0 +1,2 @@
+erl -pa ebin -noshell -eval 'file:eval("priv/batch_yuna.erl")' -s init stop
+gnuplot -e 'prefix="statfile"' priv/plot_stats.gnuplot
