@@ -1,4 +1,22 @@
+% -----------------------------------------------------------------------
+\subsection{Algorithm Parameters} \label{sub:ConsParams}
+% -----------------------------------------------------------------------
+
+The \emph{Consensus} algorithm itself would not require parameters, but it
+uses a \emph{Failure Detector} system, which in the original
+paper\cite{bib:FD} requires three parameters: \SubsVar{T}{fail},
+\SubsVar{T}{cleanup} and \SubsVar{T}{gossip}.
+
+All three values are length of time periods, so far they are expressed
+in milliseconds.
+ 
+All parameters can be provided to the application by means of the
+\emph{configuration file}. \See{\Subsection{sub:ConfigurationFile}}.
+
+
+% -----------------------------------------------------------------------
 \subsection{Organization of the Algorithm}
+% -----------------------------------------------------------------------
 
 The \PathSrc{protocols} directory is thought to contain the actual
 distributed protocols written by using the \YUNA\ facility. The project
@@ -149,7 +167,9 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
 \end{itemize}
 
 
+% -----------------------------------------------------------------------
 \subsection{Implementation}
+% -----------------------------------------------------------------------
 
 As the program interface is \emph{event driven}, the algorithm as
 presented in the paper has been split and distributed among the callbacks,

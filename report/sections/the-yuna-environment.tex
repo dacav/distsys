@@ -58,7 +58,7 @@ are:
                 be shown in the time diagram).
         \end{itemize}
             where \emph{prefix} is a string depending on
-            the configuration file (\see{\Paragraph{subsub:YUNAParams}}).
+            the configuration file (\see{\Paragraph{subsub:ConfTechParams}}).
 
     \end{itemize}
 
@@ -107,7 +107,7 @@ At startup the application reads the configuration file
 implementing the \Const{gen\_keeper} \Keyword{behavior}. Let's call it
 \Keyword{specific keeper}. When \Const{gen\_keeper} is activated by the
 \Const{services} \Keyword{supervisor}, it's parametrized with the name of
-the \Keyword{specific keeper}.
+the \Keyword{specific keeper} (\see{subsub:ConfTechParams}).
 
 The \Acr{API} can now be used by the \Keyword{specific keeper} to spawn
 and control the peers, being notified on what's going on as events are
@@ -174,6 +174,60 @@ data to other peers or in broadcast: there's no point in making the
 in case of broadcasting, the failure probability is \PCrash, as for
 unicast messages.
 
-The parameters are provided as parameter in the configuration file
-(\see{\Subsection{sub:ConfigurationFile}}).
 
+% -----------------------------------------------------------------------
+\subsection{Parameters} \label{sub:EnvParams}
+% -----------------------------------------------------------------------
+
+Aside from the parameters of the \emph{Consensus Algorithm}
+(see \Subsection{sub:ConsParameters}), and the strictly technical ones
+(see \Subsection{sub:ConfigurationFile}) the \YUNA\ environment has some
+parameters which are bound to the distributed system model:
+
+\begin{description}
+
+    \item[Failure probability]:
+        as explained each node fails with a certain probability \PCrash\
+        during a message transmission. Initially this was designed as an
+        event concerning only a fixed set of processes, then I decided to
+        make all nodes equally vulnerable to random crashes (this is more
+        realistic).
+
+        This choice may be changed in future, but for the moment
+        $\PCrash = \PrName{faulty} \cdot \PrName{fc}$. Of course
+        $\PrName{faulty}, \PrName{fc} \in [0, 1]$;
+
+    \item[Random delivery delay]:
+        as mentioned, the communication can be delayed randomly. The
+        parameters required for this functionality are the following:
+
+        \begin{itemize}
+
+        \item   The minimum delay \SubsVar{\delta}{min}, expressed in
+                milliseconds;
+
+        \item   The maximum delay \SubsVar{\delta}{max}, expressed
+                in milliseconds;
+
+        \item   The probability distribution of the delay
+                \SubsVar{D}{delay}, which must be a distribution taking
+                values in the interval $[0, 1]$. For instance, if we take
+                the \emph{uniform distribution} between 0 and 1, we obtain
+                a time interval uniformly distributed between
+                \SubsVar{\delta}{min} and \SubsVar{\delta}{max}.
+
+        \end{itemize}
+
+    \item[Number of nodes]:
+        to be mentioned here for completeness, despite it's trivial, $n =
+        \left|\Pi\right|$.
+
+    \item[Beaconing]:
+        the period of time between beacons is \SubsVar{T}{beacon},
+        expressed in milliseconds.
+
+\end{description}
+
+As for any other parameter, those can be provided to the application by
+means of the \emph{configuration file}.
+\See{\Subsection{sub:ConfigurationFile}}.
