@@ -4,7 +4,7 @@
     {vsn, "0.0.1"},
     {modules, [chan_filters, tweaked_chan, bcast, peers, keeper_proto,
                keeper_inject, yuna, gen_peer, gen_keeper, peer_chan,
-               peer_ctrl, main, log_serv, randel, utils, services]}
+               peer_ctrl, main, log_serv, randel, utils, services]},
     {registered, []},
     {application, [kernel, stdlib]},
     {mod, {yuna, []}},
