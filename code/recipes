@@ -1,2 +1,5 @@
+Launching the application in batch mode:
 erl -pa ebin -noshell -eval 'file:eval("priv/batch_yuna.erl")' -s init stop
+
+Plotting the statistics
 gnuplot -e 'prefix="statfile"' priv/plot_stats.gnuplot

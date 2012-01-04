@@ -2,7 +2,7 @@
 -author("Giovanni Simoni").
 -behavior(gen_keeper).
 -export([init/1, handle_spawn_notify/2, handle_result_notify/3,
-         handle_term_notify/4, handle_info/2]).
+         handle_term_notify/4, handle_info/2, persist/1]).
 
 -import(keeper_inject).
 -import(keeper_proto).
@@ -19,7 +19,10 @@
     beaconwait,
 
     statpeers_ratio,
-    statpeers=[]
+    statpeers=[],
+
+    % Persist even if f > n/2
+    persist=true
 }).
 
 % Functioning logic for keeper:
@@ -97,7 +100,11 @@ handle_term_notify (Pid, _Ref, Reason, Status = #status{ alive=Alive }) ->
 
 handle_info (ready, Status) ->
     log_serv:log("Waited enough. Starting first round"),
-    {ok, start_protocol(Status)}.
+    {ok, start_protocol(Status)};
+
+handle_info ({persist, V}, Status) ->
+    log_serv:log("Changing persistence"),
+    {ok, Status#status{ persist=V }}.
 
 introduce_random (One, AllOther) ->
     case gb_sets:size(AllOther) of
@@ -112,7 +119,11 @@ check_result (Status = #status{ alive=Alive, result=Result, npeers=N }) ->
     case {gb_sets:size(Alive), result:count(Result)} of
         {A, _} when A < trunc(N/2) ->
             log_serv:log("Less than N/2 (~p) nodes are still alive", [A]),
-            {ok, Status};
+            log_serv:event("f > n/2"),
+            case Status#status.persist of
+                true -> {ok, Status};
+                false -> stop
+            end;
         {X, X} ->
             LogResult =
                 fun ({Val, Count}) ->
@@ -186,3 +197,10 @@ faildet_enable_stats (To) ->
 
 killall (Alive) ->
     lists:foreach(fun (P) -> exit(P, kill) end, Alive).
+
+% ------------------------------------------------------------------------
+% Needed for testing
+% ------------------------------------------------------------------------
+
+persist (V) ->
+    erlang:send(keeper, {persist, V}).
