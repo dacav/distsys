@@ -1,7 +1,85 @@
+% ----------------------------------------------------------------------
+\subsection{Tutorial: launching the application}
+% ----------------------------------------------------------------------
+
+Conventionally, an \Erlang\ \Keyword{application} has a target directory
+in which binary object (\Path{.beam}) are pushed during compilation. This
+directory is conventionally named \Path{ebin}, and the interpreter must be
+aware of this position. So far, in order to launch the application, use
+the following command line:
+\begin{lstlisting}[language=bash]
+$ erl -pa ebin
+Erlang R14B03 (erts-5.8.4) [source] [64-bit] [smp:2:2] [rq:2]
+[async-threads:0] [hipe] [kernel-poll:false]
+
+Eshell V5.8.4  (abort with ^G)
+1>
+\end{lstlisting}
+
+Before launching the application it may be necessary to re-compile the
+modules:
+\begin{lstlisting}[language=bash]
+1> make:all([load]).
+...
+up_to_date
+\end{lstlisting}
+
+Then the application can be launched effectively:
+\begin{lstlisting}[language=bash]
+2> application:start(yuna).
+Loading configuration...
+Starting YUNA...
+Starting main supervisor...
+Starting peers pool...
+Starting services...
+ok
+2012/1/4 3:30:59 <0.98.0>  Nodes started: N=500
+2012/1/4 3:30:59 <0.98.0>  Preparing protocol...
+2012/1/4 3:30:59 <0.98.0>  Nodes started. Letting them know each other...
+...
+\end{lstlisting}
+
+After some time (depending on the execution) the process will stop:
+\begin{lstlisting}[language=bash]
+...
+2012/1/4 3:32:4 <0.98.0>  Consensus (should) has been reached:
+2012/1/4 3:32:4 <0.98.0>    Value false has been selected by 496 nodes
+2012/1/4 3:32:4 <0.98.0>  Killing remaining processes...
+2012/1/4 3:32:4 <0.98.0>  Terminating.
+2012/1/4 3:32:4 <0.98.0>  Keeper finished.
+\end{lstlisting}
+
+This will produce the files containing the statistics. The name of the
+file will depend, as explained in \Paragraph{subsub:ConfTechParams}, by a
+prefix stored in the configuration variable. In this case (the prefix is
+\emph{statfile} we have the following files:
+\begin{lstlisting}[language=bash]
+$ ls statfile_*
+statfile_decision_count.log  statfile_est_node_count.log statfile_events.log  statfile_node_count.log
+\end{lstlisting}
+
+From this files we can produce easily the graph of the execution by
+feeding the \emph{gnuplot} software with the prefix and the configuration
+I've put in the \Path{priv} directory:
+\begin{lstlisting}[language=bash]
+gnuplot -e 'prefix="statfile"' priv/plot_stats.gnuplot
+\end{lstlisting}
+
+This will produce a \emph{pdf} file named after the prefix, in this case
+\Path{statfile.pdf}. \Figure{fig:RunDefault} shows the result.
+
 \Image{pictures/run-default}{
-    A run of the consensus algorithm with the default settings.
+    A run of the \emph{consensus} algorithm with the default settings.
     The green points (labelled \emph{est\_node\_count}) show the estimated
     number of nodes as provided by the \emph{Failure Detector} of the
     1\% of the nodes. The actual number of nodes is 500 (no nodes crashed
-    during the experiment.
+    during the experiment. The \emph{start protocol} and the \emph{end
+    protocol} show respectively the startup instant of the
+    \emph{consensus} protocol and the instant in which the nodes achieved
+    the agreement.
 }{1}{fig:RunDefault}
+
+
+% ----------------------------------------------------------------------
+\subsection{Some experimental data}
+% ----------------------------------------------------------------------
