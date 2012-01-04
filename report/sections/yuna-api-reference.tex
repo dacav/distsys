@@ -283,6 +283,22 @@ pattern:
 \Const{\{env, [\{K1, V1\}, \{K2, V2\} ... \{Kn, Vn\}]\}}
 \end{quote}
 
+The configuration in the \Path{.app} file can be overriden by another
+configuration in a \Path{.conf} file by passing it as parameter to the
+\Erlang\ interpreter: suppose our file is called \Path{override.conf}, we
+can do the following:
+\begin{quote}
+\begin{verbatim}
+erl -conf override
+\end{verbatim}
+\end{quote}
+
+All this details are better explained in the official \Erlang\
+documentation\cite{bib:ErlApp}. Since however this is pretty boring, I've
+decided to write a little \emph{perl} script which is capable of
+sintetizing a correct configuration file starting from a simple text file
+containing the parameters. \See{\Paragraph{subsub:Automagic}}.
+
 \subsubsection{Parameters for the \YUNA\ environment}
 \label{subsub:ConfEnvParams}
 
@@ -340,12 +356,14 @@ pattern:
                 trough two keys:
             \begin{itemize}
                 \item   The \Const{keeper} key must be associated with an
-                        \emph{atom} declaring the name of the \Keyword{specific
-                        componet} to be used as \Keyword{keeper};
-                
-                \item   The \Const{keeper_args} key can be associated to any
-                        \Erlang\ item, which will be the actual parameter for the
-                        \Func{init}{1} function of the \Keyword{specific keeper}.
+                        \emph{atom} declaring the name of the
+                        \Keyword{specific componet} to be used as
+                        \Keyword{keeper};
+                \item   The \Const{keeper_args}
+                        key can be associated to any \Erlang\ item, which
+                        will be the actual parameter for the
+                        \Func{init}{1} function of the \Keyword{specific
+                        keeper}.
             \end{itemize}
 
         \item   We need to tune the system and get the better trade-off
@@ -391,4 +409,97 @@ pattern:
     \end{quote}
     respectively corresponding to \SubsVar{T}{fail}, \SubsVar{T}{cleanup}
     and \SubsVar{T}{gossip}.
- 
+
+\subsubsection{Automatic configuration building} \label{subsub:Automagic}
+
+Since building a configuration may be boring, I've written a little
+program that does it automatically. The usage is trivial:
+\begin{enumerate}
+\item   Build a skeleton for the configuration (example in
+        \Listing{code:Skeleton});
+\item   Crunch and get the configuration for \Erlang\ (example in
+        \Listing{code:Automagic}).
+\end{enumerate}
+
+\begin{figure}[hbt]
+\begin{lstlisting}[label={code:Skeleton},
+                   caption={Generating a quick configuration skeleton},
+                   language=bash]
+$ priv/buildconf.pl -skel quickconf
+
+$ more quickconf
+faulty_prob 
+beaconwait 
+tfail 
+tcleanup 
+tgossip 
+npeers 
+deliver_dist 
+deliver_mindel 
+file_prefix 
+deliver_maxdel 
+faulty_fail_prob 
+keeper 
+tbeacon 
+statpeers 
+
+\end{lstlisting}
+\end{figure}
+
+\begin{figure}[hbt]
+\begin{lstlisting}[label={code:Automagic},
+                   caption={From quick configuration to \Erlang\
+                            \Path{.conf} file},
+                   language=]
+$ more configs/override
+
+beaconwait 120
+deliver_dist {random, uniform, []}
+deliver_maxdel 1000
+deliver_mindel 100
+faulty_fail_prob 0.05
+faulty_prob 0.01
+file_prefix statfile_default
+keeper gfd_keeper
+npeers 500
+statpeers 0.01
+tbeacon 500
+tcleanup 20
+tfail 10
+tgossip 4
+
+$ priv/buildconf.pl < configs/override > override.conf
+
+$ more override.conf
+[{ yuna, [
+	{faulty_prob, 0.01},
+	{faulty_fail_prob, 0.05},
+    {deliver_mindel, 500},
+	{deliver_maxdel, 1500},
+	{deliver_dist, {random, uniform, []}},
+	{log_args, { standard_error,
+	             "statfile_default" }
+	},
+	{keeper, gfd_keeper},
+	{keeper_args, {{10, 20, 4},
+		       500,
+		       0.01,
+		       500,
+		       120}
+	}
+]}].
+
+$ erl -pa ebin -conf override
+Erlang R14B03 (erts-5.8.4) [source] [64-bit] [smp:2:2] [rq:2]
+[async-threads:0] [hipe] [kernel-poll:false]
+
+Eshell V5.8.4  (abort with ^G)
+1> application:load(yuna).
+ok
+2> application:get_env(yuna, deliver_mindel).
+{ok,100}
+3> application:get_env(yuna, deliver_maxdel).
+{ok,1000}
+\end{lstlisting}
+\end{figure}
+
