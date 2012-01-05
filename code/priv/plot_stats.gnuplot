@@ -11,4 +11,4 @@ set term pdf
 set output outfile
 
 load events
-plot node_count w l, est_node_count, decision w l
+plot node_count w l title "node count", est_node_count title "estimated node count", decision w l title "deciding nodes"

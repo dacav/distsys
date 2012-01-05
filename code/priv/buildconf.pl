@@ -32,14 +32,14 @@ my %REQUIRED = (
     'deliver_dist' => $REQ_PROBDIST,
 );
 
-sub print_kv ($$$) {
+sub print_kv {
     my ($H, $k, $withcomma) = @_;
     my $v = $H->{$k};
 
     print "\t{$k, $v}", $withcomma ? ',' : '', "\n";
 }
 
-sub build_config (\%) {
+sub build_config {
     my $params = shift;
     my $tmp;
 
@@ -73,28 +73,28 @@ sub build_config (\%) {
     print "]}].\n";
 }
 
-sub is_ratio () {
+sub is_ratio {
     my $val = shift;
     return ($val >= 0 && $val <= 1);
 }
 
-sub is_pinteger ($) {
+sub is_pinteger {
     return int( $_[0] =~ /^\d+$/ );
 }
 
-sub is_mfa ($) {
+sub is_mfa {
     return int( $_[0] =~ /^{\s*[a-z_]+\s*,\s*[a-z_]+\s*,\s*\[.*\]\s*}$/ );
 }
 
-sub is_filename ($) {
+sub is_filename {
     return int( $_[0] =~ /^[a-zA-Z0-9-._]+$/ );
 }
 
-sub is_atom ($) {
+sub is_atom {
     return int( $_[0] =~ /^[a-z_]+$/ );
 }
 
-sub check_missing (\%\%) {
+sub check_missing {
     my $required = shift;
     my $obtained = shift;
     my $good = 1;
@@ -146,7 +146,7 @@ sub get_params {
     return $params;
 }
 
-sub build_skeleton ($) {
+sub build_skeleton {
     my $fname = shift;
 
     open(my $F, '>', $fname) or die $!;
@@ -165,10 +165,10 @@ sub main {
         build_skeleton $skeleton;
     } else {
         my $params = &get_params;
-        if (not check_missing(%REQUIRED, %{$params})) {
+        if (not check_missing(\%REQUIRED, $params)) {
             exit(1);
         }
-        build_config %{$params};
+        build_config $params;
     }
 
     exit(0);
