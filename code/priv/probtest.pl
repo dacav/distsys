@@ -154,11 +154,12 @@ sub main {
         my $fails = 0;
         my $p = 0;
         do {
+            say "Running experiment p=$p cycle=$cycle";
             my $point = to_point($p, run_experiment($p));
             push(@dataset, $point);
             if ($point->[3] ne '?') {
                 $fails ++;
-                say "We got $fails consecutive failures...\n";
+                say "We got $fails consecutive failures (cycle=$cycle)";
             }
             $p += $PROB_INCREMENT;
         } while ($fails < $MAX_FAILS || $p >= 1);
