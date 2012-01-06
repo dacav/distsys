@@ -11,7 +11,9 @@ use feature 'say';
 
 my $DEFAULT_CONF = 'configs/default';
 my $BUILD_CONF = 'priv/buildconf.pl';
-my $PROB_INCREMENT = 0.02;
+my $PROB_INCREMENT = 0.01;
+my $MAX_FAILS = 5;
+my $EXPERIMENTS_PER_PROB = 5;
 
 sub tamper_config {
     my ($prob, $conf_fn) = @_;
@@ -146,36 +148,37 @@ sub main {
         exit 1;
     }
     my $fn = $ARGV[0];
-
-    my $p = 0;
-    my $fails = 0;
     my @dataset = ();
 
-    do {
-        my $point = to_point($p, run_experiment($p));
-        push(@dataset, $point);
-        if ($point->[3] ne '?') {
-            $fails ++;
-            say "We got $fails consecutive failures...\n";
-        }
-        $p += $PROB_INCREMENT;
-    } while ($fails < 1 || $p >= 1);
+    for (my $cycle = 0; $cycle < $EXPERIMENTS_PER_PROB; $cycle ++ ) {
+        my $fails = 0;
+        my $p = 0;
+        do {
+            my $point = to_point($p, run_experiment($p));
+            push(@dataset, $point);
+            if ($point->[3] ne '?') {
+                $fails ++;
+                say "We got $fails consecutive failures...\n";
+            }
+            $p += $PROB_INCREMENT;
+        } while ($fails < $MAX_FAILS || $p >= 1);
+    }
+
+    open(my $F, '>', $ARGV[0]);
+
+    say $F 'set xrange [:]';
+    say $F 'set yrange [:]';
+    say $F 'set key left box';
+    say $F 'set term pdf';
+    say $F "set output \"${fn}.pdf\"";
+    say $F 'set grid';
+    say $F 'set datafile missing "?"';
 
     my %titles = (
         1 => 'consensus reached',
         2 => 'reached f > n/2 before consensus',
         3 => 'reached f > n/2 before starting'
     );
-
-    open(my $F, '>', $ARGV[0]);
-
-    say $F 'set xrange restore';
-    say $F 'set yrange restore';
-    say $F 'set key left box';
-    say $F 'set term pdf';
-    say $F "set output \"${fn}.pdf\"";
-    say $F 'set grid';
-    say $F 'set datafile missing "?"';
 
     print $F 'plot ';
     print $F join(', ', map {"'-' with points title \"$titles{$_}\""} (1,2,3));

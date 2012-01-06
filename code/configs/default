@@ -1,0 +1,14 @@
+beaconwait 120
+deliver_dist {random, uniform, []}
+deliver_maxdel 1500
+deliver_mindel 500
+faulty_fail_prob 0.05
+faulty_prob 0.01
+file_prefix statfile_default
+keeper gfd_keeper
+npeers 500
+statpeers 0.01
+tbeacon 500
+tcleanup 20
+tfail 10
+tgossip 4
