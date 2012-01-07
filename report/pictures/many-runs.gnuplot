@@ -11,8 +11,7 @@ set grid
 set datafile missing "?"
 set xlabel "p_fail [probability]";
 set ylabel "execution time [ms]";
-avg(x) = 4335.52173913043
-plot avg(x) , '-' with points title "consensus reached", '-' with points title "reached f > n/2 before consensus", '-' with points title "reached f > n/2 before starting"
+plot '-' with points title "consensus reached", '-' with points title "reached f > n/2 before consensus", '-' with points title "reached f > n/2 before starting"
 0 6779
 0.01 5331
 0.03 3075
