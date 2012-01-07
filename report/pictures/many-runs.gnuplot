@@ -4,6 +4,8 @@ set tmargin at screen 0.95
 set pointsize 0.5
 set xrange [-0.005:]
 set yrange [0:16000]
+set xrange [:]
+set yrange [:]
 set key right box
 set term pdf
 set output "many-runs.pdf"
@@ -11,7 +13,7 @@ set grid
 set datafile missing "?"
 set xlabel "p_fail [probability]";
 set ylabel "execution time [ms]";
-plot '-' with points title "consensus reached", '-' with points title "reached f > n/2 before consensus", '-' with points title "reached f > n/2 before starting"
+plot '-' with points title "consensus reached", '-' with points title "reached f > n/2 before consensus", '-' with points title "reached f > n/2 before starting", '-' with lines title "average"
 0 6779
 0.01 5331
 0.03 3075
@@ -76,7 +78,7 @@ plot '-' with points title "consensus reached", '-' with points title "reached f
 0.095 ?
 0.105 ?
 0.005 2464
-0.015 43755
+#0.015 43755
 0.025 2537
 0.035 2191
 0.045 ?
@@ -152,7 +154,6 @@ e
 0.09 ?
 0 ?
 0.01 ?
-#0.02 656510
 0.03 ?
 0.04 ?
 0.05 1934
@@ -331,4 +332,19 @@ e
 0.075 0
 0.085 0
 0.095 0
+e
+0 7996.2
+0.005 5919.6
+0.01 2850.4
+0.015 4091
+0.02 4626.33333333333
+0.025 3565.2
+0.03 3785.6
+0.035 3047
+0.04 2405
+0.045 2887
+0.05 2433
+0.055 4206
+0.06 3029
+0.085 3487
 e

@@ -11,6 +11,7 @@ use feature 'say';
 
 my $DEFAULT_CONF = 'configs/default';
 my $BUILD_CONF = 'priv/buildconf.pl';
+my $PROB_START = 0.005;
 my $PROB_INCREMENT = 0.01;
 my $MAX_FAILS = 5;
 my $EXPERIMENTS_PER_PROB = 5;
@@ -152,7 +153,7 @@ sub main {
 
     for (my $cycle = 0; $cycle < $EXPERIMENTS_PER_PROB; $cycle ++ ) {
         my $fails = 0;
-        my $p = 0;
+        my $p = $PROB_START;
         do {
             say "Running experiment p=$p cycle=$cycle";
             my $point = to_point($p, run_experiment($p));
