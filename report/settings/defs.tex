@@ -13,6 +13,7 @@
 \newcommand{\Keyword}[1]{{\bfseries{#1}}}
 \newcommand{\SubsVar}[2]{\ensuremath{{#1}_{\mbox{\footnotesize{#2}}}}}
 \newcommand{\PrName}[1]{\SubsVar{p}{#1}}
+\newcommand{\Prob}[1]{\ensuremath{\mathcal{P}\left[{#1}\right]}}
 \newcommand{\PCrash}{\PrName{crash}}
 \newcommand{\Section}[1]{\emph{Section~\ref{#1}}}
 \newcommand{\Subsection}[1]{\emph{Susbection~\ref{#1}}}
@@ -21,6 +22,13 @@
 \newcommand{\Figure}[1]{\emph{Figure~\ref{#1}}}
 \newcommand{\See}[1]{See {#1} for further details}
 \newcommand{\see}[1]{see {#1} for further details}
+\newcommand{\VerbInline}[1]{{\ttfamily{#1}}}
+
+% ------------------------------------------------------------------------
+% Measure units
+% ------------------------------------------------------------------------
+\newcommand{\beacon}{\ensuremath{\:\mbox{beacon}}}
+\newcommand{\second}{\ensuremath{\:\mbox{sec}}}
 
 % ------------------------------------------------------------------------
 % Other
@@ -44,8 +52,8 @@
     \centering%
     \includegraphics[width=#3\columnwidth]{#1}%
     \caption{\emph{#2}}%
-    \label{#4}%
     \end{figure}%
+    \label{#4}%
 }
 
 % args: image path
