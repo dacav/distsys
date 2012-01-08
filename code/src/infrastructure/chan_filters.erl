@@ -35,5 +35,10 @@ hitman (1) ->
 
 random_deliver (MinDelay, MaxDelay, DelayDist) ->
     Spec = randel:build_spec(MinDelay, MaxDelay, DelayDist),
-    fun (F, T, M) -> randel:send_rand(Spec, T, {F, M}), M end.
+    case MinDelay =:= MaxDelay of
+        false ->
+            fun (F, T, M) -> randel:send_rand(Spec, T, {F, M}), M end;
+        true ->
+            fun (F, T, M) -> timer:send_after(MinDelay, T, {F, M}), M end
+    end.
 
