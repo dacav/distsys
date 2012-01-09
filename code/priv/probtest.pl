@@ -13,8 +13,8 @@ my $DEFAULT_CONF = 'configs/default';
 my $BUILD_CONF = 'priv/buildconf.pl';
 my $PROB_START = 0;
 my $PROB_INCREMENT = 0.005;
-my $MAX_FAILS = 1;
-my $EXPERIMENTS_PER_PROB = 1;
+my $MAX_FAILS = 5;
+my $EXPERIMENTS_PER_PROB = 5;
 
 sub tamper_config {
     my ($prob, $conf_fn) = @_;
@@ -177,7 +177,7 @@ sub main {
     run_cycles(\@dataset_normal, 0);
     run_cycles(\@dataset_killcoord, 1);
 
-    open(my $F, '>', $ARGV[0]);
+    open my $F, '>', "$ARGV[0].gnuplot";
 
     say $F 'set xrange [:]';
     say $F 'set yrange [:]';

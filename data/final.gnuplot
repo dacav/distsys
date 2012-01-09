@@ -1,11 +1,15 @@
-set xrange [:]
-set yrange [:]
+set size 5,5
+set rmargin at screen 0.95
+set tmargin at screen 0.95
+set pointsize 1
+set xrange [-0.001:]
+set yrange [0:5000]
 set key right box
-set term pdf
+set term pdfcairo font "Sans,12" size 10in,6in
 set output "final.pdf"
 set grid
 set datafile missing "?"
-plot '-' with points title "consensus reached", '-' with points title "f > n/2 before consensus", '-' with points title "f > n/2 before starting", '-' with points title "consensus reached (killed coordinator)", '-' with points title "f > n/2 before consensus (killed coordinator)", '-' with points title "f > n/2 before starting (killed coordinator)"
+plot '-' w p title "consensus reached", '-' w p pointtype 1 title "f > n/2 before consensus", '-' w p pointtype 2 title "f > n/2 before starting", '-' w p pointtype 3 title "consensus reached (killed coordinator)", '-' w p pointtype 9 title "f > n/2 before consensus (killed coordinator)", '-' w p pointtype 11 title "f > n/2 before starting (killed coordinator)"
 0 1890
 0.005 4274
 0.01 2161
