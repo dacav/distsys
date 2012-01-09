@@ -54,7 +54,7 @@ file will depend, as explained in \Paragraph{subsub:ConfTechParams}, by a
 prefix stored in the configuration variable. In this case (the prefix is
 \emph{statfile} we have the following files:
 \begin{lstlisting}[language=bash]
-\$ ls statfile_*
+$ ls statfile_*
 statfile_decision_count.log  statfile_est_node_count.log statfile_events.log  statfile_node_count.log
 \end{lstlisting}
 
@@ -62,48 +62,72 @@ From this files we can produce easily the graph of the execution by
 feeding the \emph{gnuplot} software with the prefix and the configuration
 I've put in the \Path{priv} directory:
 \begin{lstlisting}[language=bash]
-gnuplot -e 'prefix="statfile"' priv/plot_stats.gnuplot
+$ gnuplot -e 'prefix="statfile"' priv/plot_stats.gnuplot
 \end{lstlisting}
 
 This will produce a \emph{pdf} file named after the prefix, in this case
-\Path{statfile.pdf}.
-
-\ImageFW{pictures/run-default}{
-    A run of the \emph{consensus} algorithm with the default settings.
-    The green points (labelled \emph{est\_node\_count}) show the estimated
-    number of nodes as provided by the \emph{Failure Detector} of the
-    1\% of the nodes. The actual number of nodes is 500 (no nodes crashed
-    during the experiment. The \emph{start protocol} and the \emph{end
-    protocol} labels show respectively the startup instant of the
-    \emph{consensus} protocol and the instant in which the nodes achieved
-    the agreement.
-}{fig:RunDefault}
-
+\Path{statfile.pdf}. 
 
 % ----------------------------------------------------------------------
-\subsection{Experiment: growing failure probability}
+\subsection{Experiment: ambush to the coordinator}
 % ----------------------------------------------------------------------
 
-For testing purposes I wrote a little \emph{perl} script
-(\PathSrc{priv/probtest.pl}) which runs the application with different
-(incremental) values for the \PCrash\ parameter. For each probability
-value the script runs an experiment, feeding the following algorithm to
-the interpreter:
+For testing purposes I patched the program in order to allow an external
+process (ideally the \Erlang\ shell) to tamper the system before the
+protocol runs.
+
+I added an external boolean parameter, \VerbInline{start\_direct}, which
+can be setted to \Const{false} obtaining the system to wait for user
+interaction \emph{before} starting the protocol.
+
+I also added a few calls to the \Const{gfd_keeper} component (which is
+the \Keyword{specific keeper} for the process):
+\begin{itemize}
+\item   \Func{persist}{1} \\
+        If called with parameter \Const{true}, the \Keyword{keeper} is
+        required to abort the protocol the number of failing nodes $f$
+        overcomes $n/2$ (disable \emph{persistence}).
+\item   \Func{launch_consensus}{0} \\
+        Launch the protocol if it's not running yet
+        (not running if \VerbInline{start\_direct} = \Const{false});
+\item   \Func{schedule_killing}{1} \\
+        Allows the external project to declare a list of identifiers to be
+        killed. For instance \Const{schedule_killing([1])} will kill the
+        coordinator just before starting the protocol.
+\end{itemize}
+
+Those functions are called by a small file which is directly passed (as
+script) to an instance of the interpreter and run in batch mode. This file
+executes the following sequence:
 \begin{enumerate}
 \item   Start the application;
+\item   Tamper the execution by removing the \emph{persistence} of the
+        \Keyword{keeper};
+\item   Start the protocol;
 \item   Put an \emph{\Erlang\ monitor} on the \Keyword{keeper} process
         (in order to get informed when the keeper terminates);
 \item   Send a synchronous message to the \Keyword{logging server} (in
         order to build a \emph{causality relation} and ensure all event
         messages are served before retrieving data).
 \end{enumerate}
-At this point the script retrieves the events (for instance the protocol
+
+Another version of the same file also schedules the killing of the
+\emph{coordinator} before starting the protocol.
+
+At this point I wrote a little \emph{perl} script
+(\PathSrc{priv/probtest.pl}) which runs the application with different
+(incremental) values for the \PCrash\ parameter. For each probability
+value the script runs a certain number of experiments, than the same
+experiments are run with the alternative version of the \emph{batch}, the
+one which kills the \emph{coordinator}.
+
+Finally the script retrieves the events (for instance the protocol
 startup and stop time) for the terminated experiment. The collected data
 is so far crunched, and displayed on a picture by \emph{gnuplot}
 (\Figure{fig:ManyRuns}).
 
 \ImageFW{pictures/many-runs}{
-    Converging time for experiments. Experiments are run with incremental
+    Termination time for experiments. Experiments are run with incremental
     per-transmission failure probability ($x$ axis). As probability grows,
     the number of faulty nodes $f$ reaches $n/2$, thus the protocol is
     aborted. The pink line shows the average success time for each
@@ -115,10 +139,6 @@ I run the described experiments starting from a probability $\PCrash = 0$
 experiment. I also defined the stop condition as $\PCrash < 1$ and
 \emph{less than 5 consecutive fails}, so that the failure probability
 remains in a reasonable interval.
-
-I also achieved a little modification in my software, such that the
-\Keyword{keeper} aborts the operation as the number of failing nodes $f$
-overcomes $n/2$.
 
 Apart from probability, the remaining configuration for this experiment
 has been the following:
@@ -139,20 +159,10 @@ tgossip 4
 
 \subsubsection{Considerations} \label{subsub:ManyRuns}
 
-I expected the experiments to highlight a very strong susceptibility to
-failure, even for small values of \PCrash. This somehow matches the
-behavior shown in \Figure{fig:ManyRuns} (trivially, a greater process-wise
-failure probability corresponds to a greater global failure probability).
-In the experiment, however, the algorithm showed a surprising difference
-with respect what I thought, which honestly I cannot explain without a
-more precise analysis.
-
-In my expectation I thought the failure would be primarily due to the
-plentifulness of messages exchanged by the \emph{Failure Detector}, which
-overcomes the traffic generated by the actual \emph{Consensus} algorithm.
-
-Since a crashed process can no longer send data, I modelled system follows
-a \emph{geometric distribution}:
+In a predictable manner, experiments highlight a very strong
+susceptibility to failure, even for small values of \PCrash:
+since a crashed process can no longer send data, the crashing of the
+processes follows a \emph{geometric distribution}:
 \[
 \Prob{\mbox{Crash at $k$-th transmission}} =
     \PCrash \cdot (1 - \PCrash)^{k - 1}
@@ -162,44 +172,85 @@ a \emph{geometric distribution}:
     \sum_{i = 1}^{k}\left( \PCrash \cdot (1 - \PCrash)^{i - 1} \right)
 \]
 
-As we can see in \Figure{fig:RunDefault}, a configuration having
-$\SubsVar{T}{beacon} = 500 ms$ and $\SubsVar{T}{gossip} = 4$ yields a
-pretty quick convergence of the \emph{Failure Detectors} to the actual
-number of nodes. This however requires each process to send 2 messages per
-second. As \VerbInline{beaconwait} is 120 (namely we wait 120 beacons
-before starting the protocol):
-\[
-    \SubsVar{T}{wait}
-        = 120 \beacon \cdot 0.500 \frac{\second}{\beacon} = 60 \second
-\]
+This distribution grows pretty quickly, it's not weird that experiments
+stop being meaningful after a threshold of 0.8, although a more in-depth
+analysis should be made in order to determine the expected number of alive
+processes in time.
 
-If the transmission rate is 2 messages per second, this means we send 120
-packets \emph{before starting} the protocol, and if we relate this
-behavior with the selected values of \PCrash we'll notice that the
-protocol would hardly work with $\PCrash = 0.005$ (first step):
+\Image{pictures/final}{
+    Termination time for experiments. Different behaviors when the
+    coordinator has been killed before value proposal.
+}{1}{fig:Final}
 
-\begin{itemize}
+\Figure{fig:Final} shows the graph deriving from the described experiment.
+We can see that, in general, the consensus protocol takes a small amount of
+time to terminate (an average of $6904.69 ms$, with a peak of $62993 ms$ if
+we set $\PCrash = 0$) but if we remove 
 
-\item   With $\PCrash = 0.005$ the probability of crashing, for every
-        process, within the first minute is 0.54. This means that 274
-        process over 500 would be crashed by then. This is already $f >
-        \frac{n}{2}$;
+\ImageFW{pictures/run-default}{
+    A run of the \emph{consensus} algorithm with the default settings.
+    The green points (labelled \emph{est\_node\_count}) show the estimated
+    number of nodes as provided by the \emph{Failure Detector} of the
+    1\% of the nodes. The actual number of nodes is 500 (no nodes crashed
+    during the experiment. The \emph{start protocol} and the \emph{end
+    protocol} labels show respectively the startup instant of the
+    \emph{consensus} protocol and the instant in which the nodes achieved
+    the agreement.
+}{fig:RunDefault}
 
-\item   With $\PCrash = 0.01$ the expected number of alive process is only
-        149;
-
-\item   With $\PCrash = 0.015$ this value goes to 81.
-
-\end{itemize}
-
-I would like to investigate more on this, but honestly the time schedule
-is tight, and I already gave much more time than what it's wise on this
-experiment. I suspect however there's something wrong in my probabilistic
-model.
-
-
-% ----------------------------------------------------------------------
-\subsection{Experiment: dead coordinator}
-% ----------------------------------------------------------------------
+\ImageFW{pictures/run-default-nocoord}{
+    A run of the \emph{consensus} algorithm with the default settings.
+    The green points (labelled \emph{est\_node\_count}) show the estimated
+    number of nodes as provided by the \emph{Failure Detector} of the
+    1\% of the nodes. The actual number of nodes is 500 (no nodes crashed
+    during the experiment. The \emph{start protocol} and the \emph{end
+    protocol} labels show respectively the startup instant of the
+    \emph{consensus} protocol and the instant in which the nodes achieved
+    the agreement.
+}{fig:RunDefault}
 
 
+
+\begin{figure}[tbh]
+    \centering
+
+    \subfigure[Protocol termination time for normal consensus]{
+        \begin{tabular}{lrr}
+        \toprule
+        Probability & Avg time [ms] & Max time [ms] \\
+        \midrule
+        0       &  4918 & 10285 \\
+        0.005   &  3261 & 4274 \\
+        0.01    &  3032 & 4488 \\
+        0.015   &  3394 & 7572 \\
+        0.02    &  4112 & 6920 \\
+        0.025   & 23031 & 62993 \\
+        0.03    &  4723 & 9782 \\
+        0.035   & 17863 & 32955 \\
+        0.04    &  2327 & 2600 \\
+        0.055   &  2385 & 2385 \\
+        \bottomrule
+        \end{tabular}
+    }
+
+    \subfigure[Protocol termination time for tampered consensus]{
+        \begin{tabular}{lrr}
+        \toprule
+        Probability & Avg time [ms] & Max time [ms] \\
+        \midrule
+        0       &  74305 & 99863 \\
+        0.005   & 116259 & 216993 \\
+        0.01    &  78656 & 106305 \\
+        0.015   &  68723 & 86209 \\
+        0.02    &  56247 & 71610 \\
+        0.025   &  35976 & 47802 \\
+        0.03    &   5978 & 5978 \\
+        \bottomrule
+        \end{tabular}
+    }
+
+    \caption{\emph{Comparison between normal runs of the \emph{Consensus}
+             algorithm and runs in which the coordinator in charge has
+             been killed before value proposal.}}
+    \label{tab:Results}
+\end{figure}

@@ -1,20 +1,4 @@
 % -----------------------------------------------------------------------
-\subsection{Algorithm Parameters} \label{sub:ConsParams}
-% -----------------------------------------------------------------------
-
-The \emph{Consensus} algorithm itself would not require parameters, but it
-uses a \emph{Failure Detector} system, which in the original
-paper\cite{bib:FD} requires three parameters: \SubsVar{T}{fail},
-\SubsVar{T}{cleanup} and \SubsVar{T}{gossip}.
-
-All three values are length of time periods, so far they are expressed
-in milliseconds.
- 
-All parameters can be provided to the application by means of the
-\emph{configuration file}. \See{\Subsection{sub:ConfigurationFile}}.
-
-
-% -----------------------------------------------------------------------
 \subsection{Organization of the Algorithm}
 % -----------------------------------------------------------------------
 
@@ -168,6 +152,23 @@ handle_beacon (Status = #status{ fd=FD, cons=Cons }) ->
 
 
 % -----------------------------------------------------------------------
+\subsection{Algorithm Parameters} \label{sub:ConsParams}
+% -----------------------------------------------------------------------
+
+The \emph{Consensus} algorithm itself would not require parameters, but it
+uses a \emph{Failure Detector} system, which in the original
+paper\cite{bib:FD} requires three parameters: \SubsVar{T}{fail},
+\SubsVar{T}{cleanup} and \SubsVar{T}{gossip}.
+
+All three values are length of time periods, so far in the application
+they are expressed in milliseconds.
+
+All parameters can be provided to the application by means of the
+\emph{configuration file}. \See{\Subsection{sub:ConfigurationFile}}.
+
+
+
+% -----------------------------------------------------------------------
 \subsection{Implementation}
 % -----------------------------------------------------------------------
 
@@ -204,9 +205,8 @@ init (IdAssignment) ->
 
 The startup phase behavior (\Listing{code:ConsStartup}) depends on the
 role of the node. If the node is a coordinator, then the value to be
-decided is chosen randomly, otherwise we don't change anything and we go
-to the \emph{estimation phase} (described in
-\Paragraph{subsub:ConsEstimation}).
+decided is chosen randomly, otherwise we directly skip to the
+\emph{estimation phase} (described in \Paragraph{subsub:ConsEstimation}).
 
 \begin{figure}[hbt]
 \begin{lstlisting}[caption={Startup phase},

@@ -107,7 +107,7 @@ At startup the application reads the configuration file
 implementing the \Const{gen\_keeper} \Keyword{behavior}. Let's call it
 \Keyword{specific keeper}. When \Const{gen\_keeper} is activated by the
 \Const{services} \Keyword{supervisor}, it's parametrized with the name of
-the \Keyword{specific keeper} (\see{subsub:ConfTechParams}).
+the \Keyword{specific keeper} (\see{\Paragraph{subsub:ConfTechParams}}).
 
 The \Acr{API} can now be used by the \Keyword{specific keeper} to spawn
 and control the peers, being notified on what's going on as events are
@@ -180,8 +180,8 @@ unicast messages.
 % -----------------------------------------------------------------------
 
 Aside from the parameters of the \emph{Consensus Algorithm}
-(see \Subsection{sub:ConsParameters}), and the strictly technical ones
-(see \Subsection{sub:ConfigurationFile}) the \YUNA\ environment has some
+(see \Subsection{sub:ConsParams}), and the strictly technical ones
+(see \Subsection{sub:ConfigurationFile}), the \YUNA\ environment has some
 parameters which are bound to the distributed system model:
 
 \begin{description}
@@ -213,7 +213,7 @@ parameters which are bound to the distributed system model:
                 \SubsVar{D}{delay}, which must be a distribution taking
                 values in the interval $[0, 1]$. For instance, if we take
                 the \emph{uniform distribution} between 0 and 1, we obtain
-                a time interval uniformly distributed between
+                a delay $\delta$ uniformly distributed between
                 \SubsVar{\delta}{min} and \SubsVar{\delta}{max}.
 
         \end{itemize}
