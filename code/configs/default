@@ -1,4 +1,5 @@
 beaconwait 120
+start_direct true
 deliver_dist {random, uniform, []}
 deliver_maxdel 1500
 deliver_mindel 500

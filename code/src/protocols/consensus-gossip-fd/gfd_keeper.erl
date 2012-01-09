@@ -2,7 +2,8 @@
 -author("Giovanni Simoni").
 -behavior(gen_keeper).
 -export([init/1, handle_spawn_notify/2, handle_result_notify/3,
-         handle_term_notify/4, handle_info/2, persist/1]).
+         handle_term_notify/4, handle_info/2, persist/1,
+         launch_consensus/0, schedule_killing/1]).
 
 -import(keeper_inject).
 -import(keeper_proto).
@@ -22,7 +23,18 @@
     statpeers=[],
 
     % Persist even if f > n/2
-    persist=true
+    persist=true,
+
+    % Permission of starting: both must be true, the first is setted to
+    % true when all nodes are spawned, the second may be true by default
+    % (see the 'init' function) or gets true when 'launch_consensus'
+    % gets been called.
+    permission = {false, false},
+
+    % Processes to be killed just after protocol startup. Initially a list
+    % of Ids (like [1, 2, 3]), than, after the 'assign_roles' phase, a
+    % list of Pids (like [<X,Y,Z> ...])
+    tokill = []
 }).
 
 % Functioning logic for keeper:
@@ -42,14 +54,16 @@
 % - BeaconWait is the number of beacon intervals to be waited before
 %   starting the first round
 
-init ({FDParams = {_,_,_}, NPeers, StatPeers, TBeacon, BeaconWait}) ->
+init ({FDParams = {_,_,_}, NPeers, StartImmediately, StatPeers, TBeacon,
+      BeaconWait}) ->
     random:seed(now()), % Necessary for random peer introduction
     keeper_proto:add_peers(NPeers, gfd_peer, FDParams),
     Status = #status{
         npeers = NPeers,
         tbeacon = TBeacon,
         beaconwait = BeaconWait,
-        statpeers_ratio = StatPeers
+        statpeers_ratio = StatPeers,
+        permission = {false, StartImmediately}
     },
     {ok, Status}.
 
@@ -63,12 +77,15 @@ handle_spawn_notify (Pid, Status = #status{ alive=Alive, npeers=N }) ->
     NAlive = gb_sets:size(NewAlive),
     log_serv:node_count(NAlive),
     NewStatus1 =
-        case NAlive of
-            N ->
-                % Upon all nodes have been correctly spawned, we start thexs
+        case {NAlive, Status#status.permission} of
+            {N, {_, true}} ->
+                % Upon all nodes have been correctly spawned, we start the
                 % protocol
                 log_serv:log("Nodes started: N=~p", [N]),
-                prepare_protocol(NewStatus0);
+                prepare_protocol(NewStatus0#status{permission={true, true}});
+            {N, {_, false}} ->
+                log_serv:log("Waiting user"),
+                NewStatus0#status{ permission={true, false} };
             _ ->
                 NewStatus0
         end,
@@ -98,13 +115,35 @@ handle_term_notify (Pid, _Ref, Reason, Status = #status{ alive=Alive }) ->
     log_serv:node_count(gb_sets:size(NewAlive)),
     check_result(Status#status{ alive=NewAlive }).
 
-handle_info (ready, Status) ->
-    log_serv:log("Waited enough. Starting first round"),
-    {ok, start_protocol(Status)};
+handle_info (ready, Status= #status{ tokill=DeadGuys }) ->
+    log_serv:log("Ready! Killing to-be-killed and starting first round"),
+    killall(DeadGuys),
+    {ok, start_protocol(Status#status{ tokill=[] })};
 
 handle_info ({persist, V}, Status) ->
     log_serv:log("Changing persistence"),
-    {ok, Status#status{ persist=V }}.
+    {ok, Status#status{ persist=V }};
+
+handle_info (launch, Status = #status{permission=P}) ->
+    NewStatus = 
+        case P of
+            {_, true} ->
+                log_serv:log("Double"),
+                % Double call? Was already ok.
+                Status;
+            {true, _} ->
+                log_serv:log("Go"),
+                % All nodes already there, they're waiting for me.
+                prepare_protocol(Status#status{permission={true, true}});
+            {false, _} ->
+                log_serv:log("Waiting spawn"),
+                % Not all nodes are ready, I'm ready though.
+                Status#status{permission={false, true}}
+        end,
+    {ok, NewStatus};
+
+handle_info ({schedule_killing, SeqNumbers}, Status) ->
+    {ok, Status#status{ tokill=SeqNumbers }}.
 
 introduce_random (One, AllOther) ->
     case gb_sets:size(AllOther) of
@@ -154,12 +193,19 @@ start_protocol (Status) ->
 prepare_protocol (Status = #status{ tbeacon=TBeacon,
                                     beaconwait=BeaconWait }) ->
     log_serv:log("Preparing protocol..."),
+    log_serv:log("Permission=~p", [Status#status.permission]),
     NewStatus = assign_roles(Status),
 
     keeper_proto:enable_beacon(TBeacon),
     log_serv:log("Nodes started. Letting them know each other..."),
     timer:send_after(BeaconWait * TBeacon, self(), ready),
     NewStatus.
+
+id_to_pid (Assignment, ToKill) ->
+    Mapping = lists:foldl(fun ({I, P}, T) -> gb_trees:insert(I, P, T) end,
+                          gb_trees:empty(), Assignment),
+    L = [ gb_trees:lookup(I, Mapping) || I <- ToKill ],
+    [ element(2, X) || X <- lists:filter( fun (X) -> X =/= none end, L ) ].
 
 assign_roles (Status = #status{ alive=Alive, statpeers_ratio=R }) ->
     N = gb_sets:size(Alive),
@@ -178,8 +224,10 @@ assign_roles (Status = #status{ alive=Alive, statpeers_ratio=R }) ->
                                           Assignment)
                          ),
     lists:foreach(fun faildet_enable_stats/1, StatPeers),
+
     Status#status {
-        statpeers=StatPeers
+        statpeers=StatPeers,
+        tokill=id_to_pid(Assignment, Status#status.tokill)
     }.
 
 % ------------------------------------------------------------------------
@@ -204,3 +252,13 @@ killall (Alive) ->
 
 persist (V) ->
     erlang:send(keeper, {persist, V}).
+
+% Syncrhonize launching (do not launch until this method has been called)
+launch_consensus () ->
+    erlang:send(keeper, launch).
+
+% Require killing of a certain list of processes based on their id
+% assignment in the consensus protocol. For instance, in order to kill the
+% very first coordinator SeqNumbers must be [1].
+schedule_killing (SeqNumbers) when is_list(SeqNumbers) ->
+    erlang:send(keeper, {schedule_killing, SeqNumbers}).

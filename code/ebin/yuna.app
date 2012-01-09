@@ -32,6 +32,7 @@
         {keeper, gfd_keeper},
         {keeper_args, { {10, 20, 4},     % TFail, TCleanup, TGossip
                         500,            % NPeers
+                        true,           % Don't wait for user modifications
                         0.01,           % StatPeers [ratio]
                         500,            % TBeacon, [ms]
                         120             % BeaconWait, [TBeacon]
