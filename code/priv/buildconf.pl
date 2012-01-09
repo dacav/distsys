@@ -11,6 +11,7 @@ my $REQ_PROBAB = [\&is_ratio, 'a probability value'];
 my $REQ_PROBDIST = [\&is_mfa, 'Erlang MFA'];
 my $REQ_FILENAME = [\&is_filename, 'valid - and decent - file name'];
 my $REQ_ATOM = [\&is_atom, 'atom'];
+my $REQ_BOOL = [\&is_boolean, 'boolean'];
 
 my %REQUIRED = (
     # Requiring elaboration
@@ -23,6 +24,7 @@ my %REQUIRED = (
     'statpeers'   => $REQ_RATIO,
     'file_prefix' => $REQ_FILENAME,
     'keeper'      => $REQ_ATOM,
+    'start_direct'=> $REQ_BOOL,
 
     # Just to be dumped
     'faulty_prob' => $REQ_PROBAB,
@@ -65,6 +67,7 @@ sub build_config {
           $params->{tcleanup}, ', ',
           $params->{tgossip}, "},\n\t",
           "\t       ", $params->{npeers}, ",\n\t",
+          "\t       ", $params->{start_direct}, ",\n\t",
           "\t       ", $params->{statpeers}, ",\n\t",
           "\t       ", $params->{tbeacon}, ",\n\t",
           "\t       ", $params->{beaconwait}, "}\n\t",
@@ -74,24 +77,27 @@ sub build_config {
 }
 
 sub is_ratio {
-    my $val = shift;
-    return ($val >= 0 && $val <= 1);
+    return ($_[0] >= 0 && $_[0] <= 1)
 }
 
 sub is_pinteger {
-    return int( $_[0] =~ /^\d+$/ );
+    return int( $_[0] =~ /^\d+$/ )
 }
 
 sub is_mfa {
-    return int( $_[0] =~ /^{\s*[a-z_]+\s*,\s*[a-z_]+\s*,\s*\[.*\]\s*}$/ );
+    return int( $_[0] =~ /^{\s*[a-z_]+\s*,\s*[a-z_]+\s*,\s*\[.*\]\s*}$/ )
 }
 
 sub is_filename {
-    return int( $_[0] =~ /^[a-zA-Z0-9-._]+$/ );
+    return int( $_[0] =~ /^[a-zA-Z0-9-._]+$/ )
 }
 
 sub is_atom {
-    return int( $_[0] =~ /^[a-z_]+$/ );
+    return int( $_[0] =~ /^[a-z_]+$/ )
+}
+
+sub is_boolean {
+    return $_[0] =~ /(?:true|false)/
 }
 
 sub check_missing {

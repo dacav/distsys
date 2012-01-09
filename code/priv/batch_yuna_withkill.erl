@@ -4,6 +4,8 @@ make:all([load]).
 % Staring up application
 application:start(yuna).
 
+% Declare killling for supervisor
+gfd_keeper:schedule_killing([1]).
 % Disable keeper persistance: it will give up if f < n/2
 gfd_keeper:persist(false).
 
@@ -12,6 +14,8 @@ gfd_keeper:launch_consensus().
 
 % Syncrhonizing over keeper (keeper dies when consensus is reached)
 MonRef = erlang:monitor(process, keeper),
+
+gfd_keeper:persist(false),
 
 receive
     {'DOWN', MonRef, process, _, noproc} ->

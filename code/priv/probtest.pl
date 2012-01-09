@@ -11,10 +11,10 @@ use feature 'say';
 
 my $DEFAULT_CONF = 'configs/default';
 my $BUILD_CONF = 'priv/buildconf.pl';
-my $PROB_START = 0.005;
-my $PROB_INCREMENT = 0.01;
-my $MAX_FAILS = 5;
-my $EXPERIMENTS_PER_PROB = 5;
+my $PROB_START = 0;
+my $PROB_INCREMENT = 0.005;
+my $MAX_FAILS = 1;
+my $EXPERIMENTS_PER_PROB = 1;
 
 sub tamper_config {
     my ($prob, $conf_fn) = @_;
@@ -30,6 +30,8 @@ sub tamper_config {
             $DC[$i] = "faulty_prob $prob";
         } elsif ($DC[$i] =~ /^file_prefix/) {
             $DC[$i] = "file_prefix $conf_fn";
+        } elsif ($DC[$i] =~ /^start_direct/) {
+            $DC[$i] = "start_direct false";
         } else {
             chomp $DC[$i];
         }
@@ -39,10 +41,10 @@ sub tamper_config {
 }
 
 sub launch_erlapp {
-    my $conf_name = shift;
+    my ($conf_name, $erl_batch) = @_;
 
-    my @vals = `erl -pa ebin -noshell -eval 'file:eval("priv/batch_yuna.erl")' -config $conf_name -s init stop`;
-    print for @vals;
+    say "Launching with batch: $erl_batch.erl";
+    my @vals = `erl -pa ebin -noshell -eval 'file:eval("priv/$erl_batch.erl")' -config $conf_name -s init stop`;
 }
 
 sub get_history {
@@ -92,7 +94,7 @@ sub analyze_history {
 }
 
 sub run_experiment {
-    my ($prob, $id) = @_;
+    my ($prob, $kill_coord) = @_;
     my $conf_name = "pfail_$prob";
 
     # Building quick configuration with given probability vaue;
@@ -103,7 +105,8 @@ sub run_experiment {
     `$BUILD_CONF << EOF > $conf_name.config\n$conf\nEOF`;
 
     say "Launcing erlang, experiment with p_fail=$prob";
-    launch_erlapp($conf_name);
+    launch_erlapp($conf_name,
+                  $kill_coord ? "batch_yuna_withkill" : "batch_yuna");
     my $result = analyze_history get_history($conf_name);
 
     say "Cleaning up...";
@@ -143,21 +146,16 @@ sub to_point {
     return \@out;
 }
 
-sub main {
-    if ($#ARGV < 0) {
-        say "Give me the output file for gnuplot, please";
-        exit 1;
-    }
-    my $fn = $ARGV[0];
-    my @dataset = ();
+sub run_cycles {
+    my ($dataset, $kc) = @_;
 
     for (my $cycle = 0; $cycle < $EXPERIMENTS_PER_PROB; $cycle ++ ) {
         my $fails = 0;
         my $p = $PROB_START;
         do {
-            say "Running experiment p=$p cycle=$cycle";
-            my $point = to_point($p, run_experiment($p));
-            push(@dataset, $point);
+            say "Running experiment p=$p cycle=$cycle kill_coord=$kc";
+            my $point = to_point($p, run_experiment($p, $kc));
+            push(@$dataset, $point);
             if ($point->[3] ne '?') {
                 $fails ++;
                 say "We got $fails consecutive failures (cycle=$cycle)";
@@ -165,12 +163,25 @@ sub main {
             $p += $PROB_INCREMENT;
         } while ($fails < $MAX_FAILS || $p >= 1);
     }
+}
+
+sub main {
+    if ($#ARGV < 0) {
+        say "Give me the output file for gnuplot, please";
+        exit 1;
+    }
+    my $fn = $ARGV[0];
+    my @dataset_normal = ();
+    my @dataset_killcoord = ();
+
+    run_cycles(\@dataset_normal, 0);
+    run_cycles(\@dataset_killcoord, 1);
 
     open(my $F, '>', $ARGV[0]);
 
     say $F 'set xrange [:]';
     say $F 'set yrange [:]';
-    say $F 'set key left box';
+    say $F 'set key right box';
     say $F 'set term pdf';
     say $F "set output \"${fn}.pdf\"";
     say $F 'set grid';
@@ -178,19 +189,29 @@ sub main {
 
     my %titles = (
         1 => 'consensus reached',
-        2 => 'reached f > n/2 before consensus',
-        3 => 'reached f > n/2 before starting'
+        2 => 'f > n/2 before consensus',
+        3 => 'f > n/2 before starting'
     );
 
     print $F 'plot ';
     print $F join(', ', map {"'-' with points title \"$titles{$_}\""} (1,2,3));
+    print $F ', ', join(', ', map {"'-' with points title \"$titles{$_} (killed coordinator)\""} (1,2,3));
     print $F "\n";
-    for (my $column = 1; $column < 4; $column ++) {
-        foreach my $point (@dataset) {
+
+    my $column;
+    for ($column = 1; $column < 4; $column ++) {
+        foreach my $point (@dataset_normal) {
             say $F "@{$point}[0, $column]";
         }
         say $F 'e';
     }
+    for ($column = 1; $column < 4; $column ++) {
+        foreach my $point (@dataset_killcoord) {
+            say $F "@{$point}[0, $column]";
+        }
+        say $F 'e';
+    }
+
     close $F;
 }
 
