@@ -66,7 +66,8 @@ $ gnuplot -e 'prefix="statfile"' priv/plot_stats.gnuplot
 \end{lstlisting}
 
 This will produce a \emph{pdf} file named after the prefix, in this case
-\Path{statfile.pdf}. 
+\Path{statfile.pdf}. \Figure{fig:RunDefault} shows an example of graph.
+
 
 % ----------------------------------------------------------------------
 \subsection{Experiment: ambush to the coordinator}
@@ -84,9 +85,9 @@ I also added a few calls to the \Const{gfd_keeper} component (which is
 the \Keyword{specific keeper} for the process):
 \begin{itemize}
 \item   \Func{persist}{1} \\
-        If called with parameter \Const{true}, the \Keyword{keeper} is
-        required to abort the protocol the number of failing nodes $f$
-        overcomes $n/2$ (disable \emph{persistence}).
+        If called with parameter \Const{false} (disable
+        \emph{persistence}), the \Keyword{keeper} is required to abort the
+        protocol the number of failing nodes $f$ overcomes $n/2$;
 \item   \Func{launch_consensus}{0} \\
         Launch the protocol if it's not running yet
         (not running if \VerbInline{start\_direct} = \Const{false});
@@ -96,9 +97,9 @@ the \Keyword{specific keeper} for the process):
         coordinator just before starting the protocol.
 \end{itemize}
 
-Those functions are called by a small file which is directly passed (as
-script) to an instance of the interpreter and run in batch mode. This file
-executes the following sequence:
+I wrote a small file which calls those functions. The file is directly
+passed (as script) to an instance of the interpreter and run in batch
+mode, so that the following sequence gets executed:
 \begin{enumerate}
 \item   Start the application;
 \item   Tamper the execution by removing the \emph{persistence} of the
@@ -111,20 +112,18 @@ executes the following sequence:
         messages are served before retrieving data).
 \end{enumerate}
 
-Another version of the same file also schedules the killing of the
-\emph{coordinator} before starting the protocol.
 
 At this point I wrote a little \emph{perl} script
 (\PathSrc{priv/probtest.pl}) which runs the application with different
 (incremental) values for the \PCrash\ parameter. For each probability
-value the script runs a certain number of experiments, than the same
-experiments are run with the alternative version of the \emph{batch}, the
-one which kills the \emph{coordinator}.
+value the script runs a certain number of experiments. Then the same set
+of experiments is ran with a small modification in the batch file,
+scheduling the crash of the \emph{coordinator} before starting the
+protocol.
 
-Finally the script retrieves the events (for instance the protocol
-startup and stop time) for the terminated experiment. The collected data
-is so far crunched, and displayed on a picture by \emph{gnuplot}
-(\Figure{fig:ManyRuns}).
+The script retrieves the events (for instance the protocol startup and
+stop time) at the end of each experiment. The collected data is so far
+crunched and displayed on a picture by \emph{gnuplot}.
 
 \ImageFW{pictures/many-runs}{
     Termination time for experiments. Experiments are run with incremental
@@ -134,14 +133,15 @@ is so far crunched, and displayed on a picture by \emph{gnuplot}
     probability value. \See{\Paragraph{subsub:ManyRuns}}.
 }{fig:ManyRuns}
 
-I run the described experiments starting from a probability $\PCrash = 0$
+\Figure{fig:ManyRuns} shows graphically the outcome of the described
+experiment: I ran it starting from a probability $\PCrash = 0$
 (perfect run, no crashes), incrementing \PCrash\ of $0.005$ at each
-experiment. I also defined the stop condition as $\PCrash < 1$ and
-\emph{less than 5 consecutive fails}, so that the failure probability
-remains in a reasonable interval.
+experiment. I also defined the stop condition the conjunction of $\PCrash
+< 1$ and \emph{less than 5 consecutive fails}, so that the failure
+probability remains in a reasonable interval.
 
-Apart from probability, the remaining configuration for this experiment
-has been the following:
+Apart from probability, which is changing, the remaining configuration for
+this experiment has been the following:
 \begin{verbatim}
 beaconwait 120
 deliver_dist {random, uniform, []}
@@ -159,10 +159,9 @@ tgossip 4
 
 \subsubsection{Considerations} \label{subsub:ManyRuns}
 
-In a predictable manner, experiments highlight a very strong
+In a predictable manner, the experiments highlight a very strong
 susceptibility to failure, even for small values of \PCrash:
-since a crashed process can no longer send data, the crashing of the
-processes follows a \emph{geometric distribution}:
+each process, in fact, follows a \emph{geometric distribution}
 \[
 \Prob{\mbox{Crash at $k$-th transmission}} =
     \PCrash \cdot (1 - \PCrash)^{k - 1}
@@ -171,53 +170,49 @@ processes follows a \emph{geometric distribution}:
 \Prob{\mbox{Being crashed after $k$ transmissions}} =
     \sum_{i = 1}^{k}\left( \PCrash \cdot (1 - \PCrash)^{i - 1} \right)
 \]
-
-This distribution grows pretty quickly, it's not weird that experiments
-stop being meaningful after a threshold of 0.8, although a more in-depth
-analysis should be made in order to determine the expected number of alive
-processes in time.
+and this distribution grows pretty quickly, which justifies the fact that
+executions stop being meaningful for $\PCrash > 0.8$. In order to
+determine the expected number of alive processes in time, a more in-depth
+analysis should be achieved.
 
 \Image{pictures/final}{
     Termination time for experiments. Different behaviors when the
-    coordinator has been killed before value proposal.
+    coordinator has been killed before value proposal. The points labelled
+    \emph{consensus reached} can be seen in detail in
+    \Figure{fig:ManyRuns}.
 }{1}{fig:Final}
 
-\Figure{fig:Final} shows the graph deriving from the described experiment.
-We can see that, in general, the consensus protocol takes a small amount of
-time to terminate (an average of $6904.69 ms$, with a peak of $62993 ms$ if
-we set $\PCrash = 0$) but if we remove 
+\Figure{fig:Final} shows the graph deriving from the described experiment;
+\Figure{tab:Results} reports some statistics about the executions;
+\Figure{fig:RunDefault} and \Figure{fig:RunDefaultTamper} show
+respectively a normal and a tampered execution.
 
 \ImageFW{pictures/run-default}{
     A run of the \emph{consensus} algorithm with the default settings.
     The green points (labelled \emph{est\_node\_count}) show the estimated
     number of nodes as provided by the \emph{Failure Detector} of the
-    1\% of the nodes. The actual number of nodes is 500 (no nodes crashed
-    during the experiment. The \emph{start protocol} and the \emph{end
-    protocol} labels show respectively the startup instant of the
-    \emph{consensus} protocol and the instant in which the nodes achieved
-    the agreement.
+    nodes enabled for statistical retrieval. The actual number of nodes is
+    500 (no nodes crashed during the experiment). The \emph{start protocol}
+    and the \emph{end protocol} labels show respectively the startup
+    instant of the \emph{consensus} protocol and the instant in which the
+    nodes achieved the agreement.
 }{fig:RunDefault}
 
 \ImageFW{pictures/run-default-nocoord}{
-    A run of the \emph{consensus} algorithm with the default settings.
-    The green points (labelled \emph{est\_node\_count}) show the estimated
-    number of nodes as provided by the \emph{Failure Detector} of the
-    1\% of the nodes. The actual number of nodes is 500 (no nodes crashed
-    during the experiment. The \emph{start protocol} and the \emph{end
-    protocol} labels show respectively the startup instant of the
-    \emph{consensus} protocol and the instant in which the nodes achieved
-    the agreement.
-}{fig:RunDefault}
+    A run of the \emph{tampered consensus} algorithm with the default
+    settings. The experiment follows the same characteristics of the one
+    showed in \Figure{fig:RunDefault}, except the coordinator is killed
+    just before the protocol starts. We can appreciate the difference in
+    termination time.
+}{fig:RunDefaultTamper}
 
-
-
-\begin{figure}[tbh]
+\begin{figure}[tb!]
     \centering
 
     \subfigure[Protocol termination time for normal consensus]{
         \begin{tabular}{lrr}
         \toprule
-        Probability & Avg time [ms] & Max time [ms] \\
+        {Probability} & {Avg [ms]} & {Max [ms]} \\
         \midrule
         0       &  4918 & 10285 \\
         0.005   &  3261 & 4274 \\
@@ -236,7 +231,7 @@ we set $\PCrash = 0$) but if we remove
     \subfigure[Protocol termination time for tampered consensus]{
         \begin{tabular}{lrr}
         \toprule
-        Probability & Avg time [ms] & Max time [ms] \\
+        {Probability} & {Avg [ms]} & {Max [ms]} \\
         \midrule
         0       &  74305 & 99863 \\
         0.005   & 116259 & 216993 \\

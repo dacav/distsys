@@ -48,12 +48,12 @@
 %       width
 %       label
 \newcommand{\Image}[4]{%
-    \begin{figure}[hbt]%
-    \centering%
-    \includegraphics[width=#3\columnwidth]{#1}%
-    \caption{\emph{#2}}%
+    \begin{figure}[tb!]%
+        \centering%
+        \includegraphics[width=#3\columnwidth]{#1}%
+        \caption{\emph{#2}}%
+        \label{#4}%
     \end{figure}%
-    \label{#4}%
 }
 
 % args: image path
