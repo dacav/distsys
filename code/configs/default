@@ -5,7 +5,7 @@ deliver_maxdel 1500
 deliver_mindel 500
 faulty_fail_prob 0.05
 faulty_prob 0.01
-file_prefix statfile_default
+file_prefix statfile
 keeper gfd_keeper
 npeers 500
 statpeers 0.01
