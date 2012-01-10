@@ -2,9 +2,9 @@
 is provided with a built-in process management \Acr{API} based on
 message passing. Some interesting features are:
 \begin{itemize}
-\item   The capability of spawning processes in an easy way
-        (concurrency is implemented with real parallelism, and the
-        language supports \Acr{SMP});
+\item   Easy way of spawning processes;
+\item   Concurrency is implemented with real parallelism, and the
+        language supports \Acr{SMP};
 \item   Processes can send and receive messages asynchronously;
 \item   Dependency chains can be built among processes (so that a
         crashing process also tears down all the dependent ones);
@@ -64,7 +64,7 @@ As any \emph{small caps} identifier is a constant literal,
 They are placeholders for items of any type, which can be used in
 matching. The example shown in \Listing{code:Example} may be clarifying.
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[caption={Example of \Erlang\ code},
                    label={code:Example}]
 test_function (Value) ->
@@ -142,4 +142,4 @@ component}. This is valid for \Const{supervisor} as well, thus a
 \end{itemize}
 
 Those conventions are followed by my program as well.
-\See{\Section{sec:yuna-api-reference}} on the \Acr{API}.
+\See{\Section{sec:YunaApiReference}} on the~\Acr{API}.

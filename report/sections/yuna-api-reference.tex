@@ -1,4 +1,4 @@
-Before reading this, please read \Section{sec:erlang-and-otp}.
+Before reading this, please read \Section{sec:ErlangAndOtp}.
 \Paragraph{subsub:CodingConventions} gives order to get an overview on
 coding conventions: the last parameter of all \emph{events} is the
 \emph{status} of the running logic.
@@ -232,7 +232,7 @@ application is placed in a file named \Path{ebin/$A$.app}, where $A$ is
 the name of the application. In our case the file is \Path{ebin/yuna.app},
 shown in \Listing{code:ConfFile}.
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[label={code:ConfFile},
                    caption={default configuration file}]
 {application, yuna, [
@@ -422,7 +422,7 @@ program that does it automatically. The usage is trivial:
         \Listing{code:Automagic}).
 \end{enumerate}
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[label={code:Skeleton},
                    caption={Generating a quick configuration skeleton},
                    language=bash]
@@ -447,7 +447,7 @@ statpeers
 \end{lstlisting}
 \end{figure}
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[label={code:Automagic},
                    caption={From quick configuration to \Erlang\
                             \Path{.conf} file},

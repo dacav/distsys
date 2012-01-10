@@ -4,7 +4,7 @@ algorithms solving it are available.
 
 A correct run of a \emph{Consensus algorithms} requires the
 \emph{processes} of an asynchronous distributed environment to achieve the
-\emph{quorum}, namely to take consistently the same decision. Such
+\emph{quorum} on a certain decision and to select it consistently. Such
 decision can be generalized by the choice of a value for a truth
 assignment.
 
@@ -28,9 +28,21 @@ Correct}) \cite{bib:QualityFD}.
 
 \begin{description}
 
-    \item[Section~\ref{sec:erlang-and-otp}] Gives a quick overview on the
+    \item[\Section{sec:ErlangAndOtp}] Gives a quick overview on the
         \Erlang\ programming language;
 
-    \item[Section~\ref{sec:the-yuna-environment}]
+    \item[\Section{sec:TheYunaEnvironment}] Explains the core of the
+        program the communication system and the parameters needed by
+        both;
+
+    \item[\Section{sec:ConsensusOverYUNA}] Explains how the
+        selected \emph{Consensus} algorithm has been implemented over the
+        \YUNA\ platform;
+
+    \item[\Section{sec:Experiments}] Shows a little tutorial on how to
+        launch the algorithm, also giving some statistics;
+
+    \item[\Section{sec:YunaApiReference}] Gives a reference on the
+        \Acr{API} provided by the \YUNA\ platform.
 
 \end{description}

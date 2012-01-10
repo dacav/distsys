@@ -49,7 +49,7 @@ interface; so far each node is an instance of the following structure:
             A snippet of code showing this technique is shown in
             \Listing{code:Proxying}.
 
-            \begin{figure}[hbt]
+            \begin{figure}[tb!]
             \begin{lstlisting}[caption={Proxying for the failure detector},
                                label={code:Proxying}]
 handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
@@ -105,7 +105,7 @@ handle_message (From, {faildet, Msg}, Status = #status{ fd=FD }) ->
             A snippet of code showing this technique is shown in
             \Listing{code:FromFaildet}.
 
-            \begin{figure}[hbt]
+            \begin{figure}[tb!]
             \begin{lstlisting}[caption={Events from the \emph{Failure
                                         Detector}},
                                label={code:FromFaildet}]
@@ -191,7 +191,7 @@ After the initialization phase, each \Keyword{node} waits for the startup
 signal from the \Keyword{keeper}. This triggers the \emph{startup phase}
 (described in \Paragraph{subsub:ConsStartup}).
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[caption={initialization phase},
                    label={code:ConsInit}]
 init (IdAssignment) ->
@@ -208,7 +208,7 @@ role of the node. If the node is a coordinator, then the value to be
 decided is chosen randomly, otherwise we directly skip to the
 \emph{estimation phase} (described in \Paragraph{subsub:ConsEstimation}).
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[caption={Startup phase},
                    label={code:ConsStartup}]
 handle_message (keeper, start, Cons = #cons{ phase=0 }) ->
@@ -263,7 +263,7 @@ in the form \Const{\{phase2, E\}}, where \Const{E} may be the value $v$ or
 the \emph{atom} \Const{'?'}. After this, the algorithms moves to the
 \emph{agreement phase} (described in \Paragraph{subsub:ConsAgreement}).
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[caption={Estimation phase},
                    label={code:ConsEstimation}]
 handle_message (_From, {est_c, Est_c}, Cons = #cons{ phase=1 }) ->
@@ -308,7 +308,7 @@ either \Const{E} = $v$ or \Const{E} = \Const{'?'}.
 If all the received message have the same value, the \emph{consensus} is
 achieved correctly.
 
-\begin{figure}[hbt]
+\begin{figure}[tb!]
 \begin{lstlisting}[caption={Agreement Phase},
                    label={code:ConsAgreement}]
 handle_message (From, {phase2, E},
